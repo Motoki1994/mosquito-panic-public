@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mosquito Panic</title>
+    <link rel="stylesheet" href="./styles/main.css" />
+  </head>
+  <body>
+    <div id="game-wrapper">
+
+      <!-- ============================
+           Left UI Panel
+           ============================ -->
+      <div id="left-panel" class="hidden">
+        <div id="lp-char-wrap">
+          <img id="lp-char-img" src="assets/ui/mosquito/mosquito_ui_empty_normal.png" alt="mosquito" />
+        </div>
+
+        <div class="lp-stats">
+          <div class="lp-stat-row">
+            <span class="lp-stat-label">SCORE</span>
+            <span id="lp-score-value" class="lp-stat-value">0</span>
+          </div>
+          <div class="lp-stat-row">
+            <span class="lp-stat-label">SPD</span>
+            <span id="lp-speed-value" class="lp-stat-value lp-speed spd--fast">100%</span>
+          </div>
+          <div class="lp-stat-row lp-stat-row--bar">
+            <span class="lp-stat-label">BLOOD</span>
+            <div class="lp-bar-track">
+              <div id="lp-blood-fill" class="lp-bar-fill lp-blood-fill"></div>
+            </div>
+          </div>
+          <div class="lp-stat-row lp-stat-row--bar">
+            <span class="lp-stat-label">ALERT</span>
+            <div class="lp-bar-track">
+              <div id="lp-alert-fill" class="lp-bar-fill lp-alert-fill lp-alert--lv1"></div>
+            </div>
+          </div>
+          <div class="lp-stat-row">
+            <span class="lp-stat-label">PHASE</span>
+            <span id="lp-alert-label" class="lp-stat-value lp-phase-label">CALM</span>
+          </div>
+          <div class="lp-stat-row">
+            <span class="lp-stat-label">TIME</span>
+            <span id="lp-timer-value" class="lp-stat-value">0:00</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phaser canvas + skin DOM layer -->
+      <div id="game-container">
+        <!-- #skin-layer is injected by SkinLayer.ts at runtime -->
+      </div>
+
+      <!-- ============================
+           HUD (top overlay)
+           ============================ -->
+      <div id="hud">
+        <div class="hud-row hud-row--top">
+          <div id="score-display">
+            <span class="hud-score-label">SCORE</span>
+            <span id="score">0</span>
+          </div>
+          <div class="hud-speed-wrap">
+            <span class="hud-label--small">SPD</span>
+            <span id="speed-indicator" class="speed--fast">100%</span>
+          </div>
+        </div>
+
+        <div class="hud-row hud-row--gauges">
+          <div class="hud-gauge-block">
+            <div class="hud-gauge-header">
+              <span class="hud-label">🩸 BLOOD</span>
+              <span id="blood-value" class="hud-gauge-value">0%</span>
+              <span id="blood-status" class="bstatus hidden"></span>
+            </div>
+            <div id="blood-gauge-track" class="gauge-track gauge-track--lg">
+              <div id="blood-gauge-fill" class="gauge-fill"></div>
+            </div>
+          </div>
+
+          <div class="hud-gauge-block">
+            <div class="hud-gauge-header">
+              <span class="hud-label">⚠ ALERT</span>
+              <span id="alert-phase-label" class="alert-phase alert-phase--lv1">CALM</span>
+            </div>
+            <div id="alert-gauge-track" class="gauge-track gauge-track--lg alert--lv1">
+              <div id="alert-gauge-fill" class="gauge-fill"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="combo-display" class="hidden"></div>
+      <div id="delivery-score-popup" class="hidden delivery-popup"></div>
+
+      <div id="blood-full-notice" class="hidden notice notice--blood">
+        🩸 BLOOD FULL — DELIVER NOW!
+      </div>
+      <div id="heavy-notice" class="hidden notice notice--heavy">
+        ⚠️ GETTING HEAVY!
+      </div>
+
+      <!-- ============================
+           Title Screen
+           ============================ -->
+      <div id="title-screen">
+        <div class="title-mosquito">🦟</div>
+        <h1 class="title-main">MOSQUITO PANIC</h1>
+        <p class="title-sub">▸ SUCK • DELIVER • SURVIVE ◂</p>
+
+        <div class="title-how">
+          <div class="how-item">
+            <span class="how-key">WASD / ↑↓←→</span>
+            <span class="how-desc">Move</span>
+          </div>
+          <div class="how-item">
+            <span class="how-key">⊕ targets</span>
+            <span class="how-desc">Suck blood</span>
+          </div>
+          <div class="how-item">
+            <span class="how-key">🍼 deliver</span>
+            <span class="how-desc">Score!</span>
+          </div>
+          <div class="how-item">
+            <span class="how-key">⚠️ warning</span>
+            <span class="how-desc">Dodge the hand!</span>
+          </div>
+        </div>
+
+        <p class="title-desc">
+          Full tank delivery = big bonus.<br />
+          High alert = danger AND reward.
+        </p>
+
+        <div id="title-highscore" class="title-highscore hidden"></div>
+        <button id="start-btn" class="btn-primary">GAME START</button>
+      </div>
+
+      <!-- ============================
+           Result Screen
+           ============================ -->
+      <div id="result-screen" class="hidden">
+        <div id="new-record-badge" class="new-record hidden">★ NEW RECORD ★</div>
+        <p class="result-title">GAME OVER</p>
+
+        <div class="result-breakdown">
+          <div class="breakdown-row">
+            <span class="breakdown-label">🍼 DELIVERY SCORE</span>
+            <span class="breakdown-value" id="result-delivery-score">0</span>
+          </div>
+          <div class="breakdown-row">
+            <span class="breakdown-label">📦 DELIVERIES</span>
+            <span class="breakdown-value" id="result-delivery-count">0回</span>
+          </div>
+          <div class="breakdown-row breakdown-row--survival">
+            <span class="breakdown-label">SURVIVED</span>
+            <span class="breakdown-value" id="result-survival-sec">0s</span>
+          </div>
+        </div>
+
+        <div class="result-divider"></div>
+        <p class="result-label">TOTAL SCORE</p>
+        <p class="result-score-value"><span id="final-score">0</span></p>
+        <p class="result-highscore" id="result-highscore">BEST: 0</p>
+        <button id="retry-btn" class="btn-primary">RETRY</button>
+      </div>
+
+    </div><!-- /#game-wrapper -->
+
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>
