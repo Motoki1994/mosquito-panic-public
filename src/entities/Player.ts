@@ -54,8 +54,8 @@ export class Player {
     // Wings attach at the thorax (upper body).
     // x=±12: root overlaps body edge by ~12px (naturally attached), tip extends ~7px beyond body.
     // y=-10: aligns with upper-thorax zone (body content top is at y≈-19.5 rendered).
-    this.wingL = scene.add.image(-12, -50, 'wing_left').setScale(WING_SCALE)
-    this.wingR = scene.add.image( 12, -50, 'wing_right').setScale(WING_SCALE)
+    this.wingL = scene.add.image(-12, -5, 'wing_left').setScale(WING_SCALE)
+    this.wingR = scene.add.image( 12, -5, 'wing_right').setScale(WING_SCALE)
 
     // Render order: body first (bottom), then wings on top.
     // In Phaser containers, later items in the array are drawn over earlier ones.
