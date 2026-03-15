@@ -27,7 +27,9 @@ export class HumanHand {
 
   private warnCircle:   Phaser.GameObjects.Arc
   private strikeCircle: Phaser.GameObjects.Arc
-  private warnIcon:     Phaser.GameObjects.Text
+  private warnIcon:     Phaser.GameObjects.Image
+
+  private static readonly ICON_SCALE = 0.05
 
   private targetX: number = 0
   private targetY: number = 0
@@ -55,8 +57,11 @@ export class HumanHand {
     this.strikeCircle = scene.add.arc(-200, -200, 45, 0, 360, false, 0xff2200, 0)
     this.strikeCircle.setDepth(3)
 
-    this.warnIcon = scene.add.text(-200, -200, '✋', { fontSize: '28px' })
-      .setOrigin(0.5).setAlpha(0).setDepth(4)
+    this.warnIcon = scene.add.image(-200, -200, 'ui_hand')
+      .setScale(HumanHand.ICON_SCALE)
+      .setOrigin(0.5)
+      .setAlpha(0)
+      .setDepth(4)
 
     this.phaseTimer = scene.time.addEvent({
       delay: BALANCE.HAND_INITIAL_DELAY_MS,
@@ -90,6 +95,37 @@ export class HumanHand {
       this.phaseTimer?.destroy()
       this.beginWarn()
     }
+  }
+
+  /**
+   * チュートリアル中: 内部タイマーを停止しビジュアルを全消去する
+   * Phaser scene.time イベントは update() を呼ばなくても発火するため
+   * タイマー自体を destroy して手攻撃を完全に無効化する
+   */
+  disable(): void {
+    this.phaseTimer?.destroy()
+    this.phaseTimer = null
+    this.phase = 'idle'
+    this.scene.tweens.killTweensOf(this.warnCircle)
+    this.scene.tweens.killTweensOf(this.strikeCircle)
+    this.scene.tweens.killTweensOf(this.warnIcon)
+    this.warnCircle.setAlpha(0).setPosition(-200, -200)
+    this.strikeCircle.setAlpha(0).setPosition(-200, -200)
+    this.warnIcon.setAlpha(0).setPosition(-200, -200)
+  }
+
+  /**
+   * チュートリアル終了後: 通常の攻撃タイマーを再開する
+   * 残留 disabled 状態なしでクリーンに再起動される
+   */
+  enable(): void {
+    if (this.phaseTimer) return  // 既に稼働中
+    this.phase = 'idle'
+    this.phaseTimer = this.scene.time.addEvent({
+      delay: BALANCE.HAND_INITIAL_DELAY_MS,
+      callback: this.beginWarn,
+      callbackScope: this,
+    })
   }
 
   destroy(): void {
@@ -173,7 +209,9 @@ export class HumanHand {
     })
     this.scene.tweens.add({
       targets: this.warnIcon,
-      scaleX: 1.8, scaleY: 1.8, alpha: 1,
+      scaleX: HumanHand.ICON_SCALE * 1.8,
+      scaleY: HumanHand.ICON_SCALE * 1.8,
+      alpha: 1,
       duration: BALANCE.HAND_DESCEND_MS,
       ease: 'Power3.easeIn',
     })
@@ -188,7 +226,7 @@ export class HumanHand {
   private beginStrike(): void {
     this.phase = 'strike'
 
-    this.warnIcon.setAlpha(0).setScale(1)
+    this.warnIcon.setAlpha(0).setScale(HumanHand.ICON_SCALE)
     this.strikeCircle.setAlpha(0.9)
 
     this.scene.tweens.add({

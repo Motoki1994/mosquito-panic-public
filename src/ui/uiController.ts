@@ -90,6 +90,12 @@ export const uiController = {
       : domRefs.bloodGaugeTrack.classList.remove('gauge--warning')
   },
 
+  setBloodFull(active: boolean): void {
+    active
+      ? domRefs.bloodGaugeTrack.classList.add('gauge--full')
+      : domRefs.bloodGaugeTrack.classList.remove('gauge--full')
+  },
+
   /**
    * Blood状態ラベルを更新する
    * @param percent 血液量 0〜100
@@ -98,10 +104,11 @@ export const uiController = {
     const el = domRefs.bloodStatus
     el.classList.remove('bstatus--heavy', 'bstatus--critical', 'hidden')
 
-    if (percent >= 100) {
+    const display = Math.round(percent)
+    if (display >= 100) {
       el.textContent = 'FULL'
       el.classList.add('bstatus--critical')
-    } else if (percent >= 70) {
+    } else if (display >= 70) {
       el.textContent = 'HEAVY'
       el.classList.add('bstatus--heavy')
     } else {
@@ -111,6 +118,30 @@ export const uiController = {
 
   showBloodFullNotice(): void {
     this._flashNotice(domRefs.bloodFullNotice)
+  },
+
+  /** チュートリアル: DOM テキストパネルにメインテキストとサブテキストを表示 */
+  showTutorialText(main: string, sub: string, blinkSub = false): void {
+    domRefs.tutMain.textContent = main
+    domRefs.tutSub.textContent  = sub
+    domRefs.tutSub.classList.toggle('tut-blink', blinkSub)
+    domRefs.tutTextPanel.classList.remove('hidden')
+  },
+
+  /** チュートリアル: DOM テキストパネルを非表示 */
+  hideTutorialText(): void {
+    domRefs.tutTextPanel.classList.add('hidden')
+    domRefs.tutSub.classList.remove('tut-blink')
+  },
+
+  /** チュートリアル: 赤ちゃんUIをハイライト */
+  showTutorialHighlightBaby(): void {
+    domRefs.babyWrap.classList.add('tutorial-highlight')
+  },
+
+  /** チュートリアル: ハイライトを解除 */
+  removeTutorialHighlight(): void {
+    domRefs.babyWrap.classList.remove('tutorial-highlight')
   },
 
   // ==========================================

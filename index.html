@@ -60,7 +60,7 @@
           <span id="speed-indicator" class="speed--fast">100%</span>
         </div>
 
-        <button id="pause-btn" class="pause-btn hidden" title="Pause (ESC)">❚❚</button>
+        <button id="pause-btn" class="pause-btn hidden" title="Pause (ESC)">MENU</button>
       </div>
 
       <!-- ============================
@@ -85,6 +85,16 @@
             <div class="lp-stat-block">
               <span class="lp-stat-key lp-key--time">TIME:</span>
               <span id="lp-timer-value" class="lp-stat-val lp-timer-val">0:00</span>
+            </div>
+          </div>
+
+          <!-- Area Progress Icons -->
+          <div class="lp-area-icons">
+            <span class="lp-area-icons-label">AREA</span>
+            <div class="lp-area-icons-row">
+              <img id="lp-icon-leg"  class="lp-area-icon lp-area-icon--active" src="assets/ui/human/leg.png"  alt="LEG"  title="LEG"  />
+              <img id="lp-icon-arm"  class="lp-area-icon"                      src="assets/ui/human/arm.png"  alt="ARM"  title="ARM"  />
+              <img id="lp-icon-face" class="lp-area-icon"                      src="assets/ui/human/face.png" alt="FACE" title="FACE" />
             </div>
           </div>
 
@@ -125,7 +135,7 @@
           <div id="debuff-popup" class="hidden debuff-popup"></div>
           <div id="event-notice" class="hidden notice notice--event"></div>
           <div id="blood-full-notice" class="hidden notice notice--blood">
-            🩸 BLOOD FULL — DELIVER NOW!
+            🩸 FULL TANK! — DELIVER NOW!
           </div>
           <div id="heavy-notice" class="hidden notice notice--heavy">
             ⚠️ GETTING HEAVY!
@@ -134,6 +144,12 @@
             🍼 BABIES HUNGRY — DELIVER NOW!
           </div>
           <div id="stage-notice" class="hidden notice notice--stage"></div>
+
+          <!-- Tutorial Text Panel (DOM — visible above canvas & skin-layer) -->
+          <div id="tut-text-panel" class="tut-text-panel hidden">
+            <p id="tut-main" class="tut-main"></p>
+            <p id="tut-sub"  class="tut-sub"></p>
+          </div>
 
           <!-- Pause Overlay -->
           <div id="pause-overlay" class="hidden pause-overlay">
@@ -193,6 +209,12 @@
             </div>
 
             <div id="title-highscore" class="title-highscore hidden"></div>
+
+            <label id="tutorial-toggle-row" class="title-tutorial-row">
+              <input type="checkbox" id="tutorial-toggle" checked />
+              <span class="tutorial-toggle-label">Tutorial</span>
+            </label>
+
             <button id="start-btn" class="btn-primary">GAME START</button>
           </div>
 

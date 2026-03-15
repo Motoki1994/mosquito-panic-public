@@ -83,7 +83,7 @@ export const BALANCE = {
   // --------------------------------------------------
 
   /** ゲーム開始時の空腹初期値 — 序盤から緊張感を生む */
-  HUNGER_INITIAL: 40,
+  HUNGER_INITIAL: 60,
 
   /** 空腹上昇速度 (/s) — LEGステージ基準 */
   HUNGER_RATE: 1.0,
@@ -177,7 +177,7 @@ export const BALANCE = {
   /** ミッションタイムアウト — この時間内に完了しなければキャンセル (秒) */
   MISSION_TIMEOUT_SEC: 45,
   /** ミッション報酬がシールドになる確率 */
-  MISSION_SHIELD_REWARD_CHANCE: 0.20,
+  MISSION_SHIELD_REWARD_CHANCE: 0.50,
 
   // --------------------------------------------------
   // Greed Moment (強欲ボーナス)
@@ -334,7 +334,7 @@ export const BALANCE = {
   // --------------------------------------------------
 
   /** この得点を超えるとファンイベントが解禁される */
-  FAN_START_SCORE: 200,
+  FAN_START_SCORE:30000,
 
   /** 得点200到達後、最初のファンが起動するまでの待機時間 (秒) */
   FAN_INITIAL_COOLDOWN_SEC: 20,
@@ -345,7 +345,7 @@ export const BALANCE = {
 
   /** 1回のファンイベントの持続時間範囲 (秒) */
   FAN_MIN_DURATION_SEC: 4,
-  FAN_MAX_DURATION_SEC: 7,
+  FAN_MAX_DURATION_SEC: 6,
 
   /** 風力 (px/s) の範囲 */
   FAN_MIN_STRENGTH: 35,
@@ -360,8 +360,8 @@ export const BALANCE = {
    * LEG → ARM → FACE の3段階構成
    */
   STAGE_LEG_THRESHOLD:  0,
-  STAGE_ARM_THRESHOLD:  8000,   // 5000 → 8000: 段階進行を緩やかにし難易度エスカレーションを維持
-  STAGE_FACE_THRESHOLD: 20000,  // 10000 → 20000
+  STAGE_ARM_THRESHOLD:  20000,   // 5000 → 8000: 段階進行を緩やかにし難易度エスカレーションを維持
+  STAGE_FACE_THRESHOLD: 40000,  // 10000 → 20000
 
   /**
    * アラート上昇速度への乗数 (ALERT_RATE_SUCKING / IDLE に掛ける)
@@ -375,21 +375,21 @@ export const BALANCE = {
    */
   STAGE_LEG_SCORE_MULT:  1.0,
   STAGE_ARM_SCORE_MULT:  1.3,
-  STAGE_FACE_SCORE_MULT: 1.8,
+  STAGE_FACE_SCORE_MULT: 2.0,
 
   /**
    * 空腹上昇速度への乗数 — 上位ステージほど赤ちゃんの消費が激しい
    */
   STAGE_LEG_HUNGER_MULT:  1.0,
-  STAGE_ARM_HUNGER_MULT:  1.3,
-  STAGE_FACE_HUNGER_MULT: 2.0,
+  STAGE_ARM_HUNGER_MULT:  2.5,
+  STAGE_FACE_HUNGER_MULT: 3.2,
 
   // --------------------------------------------------
   // SmokeSystem (蚊取り線香の煙)
   // --------------------------------------------------
 
   /** この得点を超えると煙エリアが出現し始める */
-  SMOKE_START_SCORE: 500,
+  SMOKE_START_SCORE: 10000,
 
   /** 煙エリアの半径 (px) */
   SMOKE_RADIUS: 65,

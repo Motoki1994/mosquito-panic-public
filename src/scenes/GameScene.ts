@@ -16,6 +16,7 @@ import { DailyBonusSystem } from '../systems/DailyBonusSystem'
 import { HighScoreManager } from '../systems/HighScoreManager'
 import { ItemSystem, ItemType } from '../systems/ItemSystem'
 import { MissionSystem } from '../systems/MissionSystem'
+import { TutorialManager } from '../systems/TutorialManager'
 import { LeftPanel } from '../ui/LeftPanel'
 import { uiController, BabyState } from '../ui/uiController'
 import { BALANCE } from '../data/balance'
@@ -77,7 +78,33 @@ export class GameScene extends Phaser.Scene {
   private dpPos!: { x: number; y: number }
   private respawnTimers: Phaser.Time.TimerEvent[] = []
 
+  // 皮膚テクスチャ背景
+  private skinBackground!: Phaser.GameObjects.Image
+  private prevSkinStage: string = ''
+  private skinTransitioning: boolean = false
+
+  // チュートリアル
+  private tutorialManager!: TutorialManager
+  private tutOverlay!: Phaser.GameObjects.Rectangle
+  private tutText!: Phaser.GameObjects.Text
+  private tutSubText!: Phaser.GameObjects.Text
+  private tutRing!: Phaser.GameObjects.Arc
+  private demoMosquito!: Phaser.GameObjects.Image
+  private tutStep: number = -1
+  private _tutEnterHandler!: (e: KeyboardEvent) => void
+  private _tutSkipHandler!:  (e: KeyboardEvent) => void
+
   constructor() { super({ key: SCENE_KEYS.GAME }) }
+
+  preload(): void {
+    this.load.image('ui_hand',  'assets/ui/human/hand.png')
+    this.load.image('ui_arm',   'assets/ui/human/arm.png')
+    this.load.image('ui_face',  'assets/ui/human/face.png')
+    this.load.image('ui_leg',   'assets/ui/human/leg.png')
+    this.load.image('skin_face', 'assets/ui/skin/skin.png')
+    this.load.image('skin_arm',  'assets/ui/skin/downy hair.png')
+    this.load.image('skin_leg',  'assets/ui/skin/shin-hair.png')
+  }
 
   create(): void {
     this.isGameOver      = false
@@ -91,8 +118,11 @@ export class GameScene extends Phaser.Scene {
     this.sugarDropTimer  = 0
     this.smokeFilterTimer = 0
     this.shieldTimer     = 0
-    this.babyExcitedTimer = 0
-    this.respawnTimers   = []
+    this.babyExcitedTimer  = 0
+    this.respawnTimers     = []
+    this.prevSkinStage     = 'leg'
+    this.skinTransitioning = false
+    this.tutStep           = -1
 
     uiController.showGameHUD()
     // イベントUIを明示的にリセット (前回プレイの残留状態を消去)
@@ -116,6 +146,11 @@ export class GameScene extends Phaser.Scene {
     this.leftPanel.show()
     uiController.showBabyUI()
     uiController.updateBabyState('normal')
+
+    // 皮膚テクスチャ背景 (depth 0 — 全ゲームオブジェクトの背面)
+    this.skinBackground = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'skin_leg')
+      .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
+      .setDepth(0)
 
     this.player = new Player(this, GAME_WIDTH / 2, GAME_HEIGHT / 2)
 
@@ -157,12 +192,79 @@ export class GameScene extends Phaser.Scene {
     // 初期マイルストーン表示
     uiController.updateMilestone(GameScene.MILESTONES[0])
 
+    // チュートリアルオーバーレイ (depth 200+ — 全ゲームオブジェクトの前面)
+    // alpha 0 で開始 — step 0 の最初に 0.65 にフェードイン (tutorial OFF 時は常に非表示)
+    this.tutOverlay = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0)
+      .setDepth(200)
+    this.tutText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 30, '', {
+      fontFamily: "'Press Start 2P', monospace",
+      fontSize:   '12px',
+      color:      '#ffffff',
+      align:      'center',
+      wordWrap:   { width: 580 },
+      lineSpacing: 8,
+    }).setOrigin(0.5).setDepth(202).setAlpha(0)
+    this.tutSubText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 70, '', {
+      fontFamily: "'Rajdhani', sans-serif",
+      fontSize:   '17px',
+      color:      '#ffdd88',
+      align:      'center',
+      wordWrap:   { width: 500 },
+    }).setOrigin(0.5).setDepth(202).setAlpha(0)
+    this.tutRing = this.add.arc(0, 0, 70, 0, 360, false, 0xffffff, 0)
+      .setStrokeStyle(3, 0xffff88, 1)
+      .setDepth(201)
+      .setVisible(false)
+
+    this.tutorialManager = new TutorialManager()
+
+    // scene.start() で渡された showTutorial フラグを確認
+    // false なら即完了 (オーバーレイは alpha 0 のまま変化しない)
+    const sceneData = this.scene.settings.data as { showTutorial?: boolean } | undefined
+    if (sceneData?.showTutorial === false) {
+      this.tutorialManager.forceComplete()
+      this.incrementPlayCount()
+    }
+
+    // チュートリアル中: 手攻撃を完全無効化
+    if (this.tutorialManager.isActive()) {
+      this.hand.disable()
+    }
+
+    // デモ蚊 (チュートリアル自動演示用 — 実際のプレイヤーテクスチャを使用)
+    this.demoMosquito = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'body_empty')
+      .setScale(0.13)
+      .setDepth(190)
+      .setVisible(false)
+      .setTint(0xff88aa)   // ピンク色のティントでデモ蚊を区別
+
+    // ENTERキー: チュートリアル最終ステップでゲーム開始
+    this._tutEnterHandler = (e: KeyboardEvent) => {
+      if ((e.code === 'Enter' || e.code === 'Space') && this.tutorialManager.isWaitingForEnter()) {
+        this.resetForGameStart()
+      }
+    }
+    document.addEventListener('keydown', this._tutEnterHandler, { capture: true })
+
+    // S キー: チュートリアルをスキップして "PRESS ENTER TO START" へジャンプ
+    this._tutSkipHandler = (e: KeyboardEvent) => {
+      if (e.code === 'KeyS' && this.tutorialManager.isActive() && !this.tutorialManager.isWaitingForEnter()) {
+        this.tutorialManager.skipToEnd()
+      }
+    }
+    document.addEventListener('keydown', this._tutSkipHandler, { capture: true })
+
     // ポーズボタン & ESCキー
+    // チュートリアル中: ESC = スキップ (PRESS ENTER TO START へ)
+    // 通常ゲーム中:   ESC = ポーズ/レジューム
     uiController.showPauseButton(() => this.pauseGame())
     this._escHandler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !this.isGameOver) {
-        this.isPaused ? this.resumeGame() : this.pauseGame()
+      if (e.key !== 'Escape' || this.isGameOver) return
+      if (this.tutorialManager.isActive() && !this.tutorialManager.isWaitingForEnter()) {
+        this.tutorialManager.skipToEnd()
+        return
       }
+      this.isPaused ? this.resumeGame() : this.pauseGame()
     }
     document.addEventListener('keydown', this._escHandler, { capture: true })
 
@@ -174,6 +276,23 @@ export class GameScene extends Phaser.Scene {
   update(_t: number, delta: number): void {
     if (this.isGameOver) return
     const dt = delta / 1000
+
+    // ========== チュートリアルモード (自動デモ) ==========
+    // プレイヤー入力・移動を完全にブロック。タイマーも凍結。
+    // デモ蚊がトゥイーンで自動的にゲームループを演示する。
+    if (this.tutorialManager.isActive()) {
+      this.tutorialManager.update(dt)
+      this.updateTutorialOverlay()
+
+      const bp  = this.bloodSystem.getPercent()
+      const lvl = this.alertSystem.getLevel()
+      this.leftPanel.updateCharacter(bp, lvl)
+      // タイマー停止: updateTimer を呼ばない
+      this.leftPanel.updateAreaIcons('leg')
+      uiController.updateScore(0)
+      return
+    }
+    // ==========================================
 
     this.player.update(delta)
 
@@ -205,7 +324,7 @@ export class GameScene extends Phaser.Scene {
     if (isInSmoke && !smokeBlocked) {
       this.bloodSystem.drain(BALANCE.SMOKE_BLOOD_DRAIN_RATE * dt)
     }
-    const hourglassAlertMult = this.hourglassTimer > 0 ? BALANCE.HOURGLASS_ALERT_MULT : 1.0
+    const hourglassAlertMult = this.hourglassTimer > 0 ? 0 : 1.0
     const smokeAlertMult = (isInSmoke && !smokeBlocked) ? BALANCE.SMOKE_ALERT_MULT : 1.0
     const externalMult = this.stageSystem.getAlertMult() * smokeAlertMult * hourglassAlertMult
 
@@ -215,17 +334,21 @@ export class GameScene extends Phaser.Scene {
     this.stageSystem.update(score)
     this.elapsedSec += dt
 
+    // 皮膚テクスチャ切替 (ステージが変わった時のみ)
+    const currentSkinStage = this.stageSystem.getCurrentStage().id
+    if (currentSkinStage !== this.prevSkinStage) {
+      this.prevSkinStage = currentSkinStage
+      this.switchSkinTexture(currentSkinStage)
+    }
+
     // アクティブアイテムタイマー消化
     if (this.hourglassTimer   > 0) this.hourglassTimer   = Math.max(0, this.hourglassTimer   - dt)
     if (this.sugarDropTimer   > 0) this.sugarDropTimer   = Math.max(0, this.sugarDropTimer   - dt)
     if (this.smokeFilterTimer > 0) this.smokeFilterTimer = Math.max(0, this.smokeFilterTimer - dt)
     if (this.shieldTimer      > 0) this.shieldTimer      = Math.max(0, this.shieldTimer      - dt)
 
-    // Shield: 全ダメージ遮断 (空腹ドレインも停止)
-    // Hourglass: 空腹70%・アラート50%に減速
-    const hungerDt = this.shieldTimer > 0 ? 0
-                   : this.hourglassTimer > 0 ? dt * BALANCE.HOURGLASS_HUNGER_MULT
-                   : dt
+    // Shield / Hourglass: 空腹ドレイン完全停止
+    const hungerDt = this.shieldTimer > 0 || this.hourglassTimer > 0 ? 0 : dt
     this.hungerSystem.update(hungerDt, this.stageSystem.getHungerMult())
 
     // アクティブアイテム残り時間HUD
@@ -308,12 +431,13 @@ export class GameScene extends Phaser.Scene {
       this.shieldRing.setVisible(false)
     }
 
-    // Left panel sync (portrait + PHASE label + timer only)
+    // Left panel sync (portrait + PHASE label + timer + area icons)
     const bp  = this.bloodSystem.getPercent()
     const lvl = this.alertSystem.getLevel()
     this.leftPanel.updateCharacter(bp, lvl)
     this.leftPanel.updateAlert(this.alertSystem.getAmount(), lvl)
     this.leftPanel.updateTimer(dt)
+    this.leftPanel.updateAreaIcons(this.stageSystem.getCurrentStage().id)
 
     uiController.updateScore(this.scoreSystem.getTotal())
     uiController.updateScoreGap(this.scoreSystem.getTotal(), this.bestScore)
@@ -363,6 +487,134 @@ export class GameScene extends Phaser.Scene {
 
   // --------------------------------------------------
 
+  /**
+   * チュートリアルオーバーレイを現在ステップに合わせて更新する (自動デモ版)
+   *
+   * テキスト表示: DOM (#tut-text-panel) — skin-layer の上に確実に表示される
+   * 暗幕:         Phaser tutOverlay (canvas コンテンツを暗くする)
+   * スポットライト: Phaser tutRing (canvas 上、ターゲットや納品点を示す)
+   * デモ蚊:       Phaser Image (canvas 上で自動移動)
+   */
+  private updateTutorialOverlay(): void {
+    const step = this.tutorialManager.getStep()
+
+    // Step 4: ENTER待ち — 一度だけ更新
+    if (this.tutorialManager.isWaitingForEnter()) {
+      if (step !== this.tutStep) {
+        this.tutStep = step
+        this.tweens.killTweensOf(this.tutRing)
+        this.tweens.killTweensOf(this.demoMosquito)
+        this.tutRing.setVisible(false)
+        this.demoMosquito.setVisible(false)
+        uiController.removeTutorialHighlight()
+        // DOM テキストをブリンク表示
+        uiController.showTutorialText('PRESS ENTER\nTO START', '[ ENTER / SPACE ]', true)
+      }
+      return
+    }
+
+    // 完了済み (resetForGameStart() 後)
+    if (this.tutorialManager.isDone()) return
+
+    // ステップが変わった時だけビジュアルを更新
+    if (step === this.tutStep) return
+    this.tutStep = step
+
+    // 前ステップのトゥイーンをリセット
+    this.tweens.killTweensOf(this.tutRing)
+    this.tweens.killTweensOf(this.demoMosquito)
+    this.tutRing.setVisible(false).setAlpha(1).setScale(1)
+
+    switch (step) {
+      case 0:
+        // canvas 暗幕を表示 (DOM skin-layer ターゲットはその上に見える)
+        this.tutOverlay.setAlpha(0.65)
+        uiController.showTutorialText(
+          'You are a mosquito mother.\nFeed your hungry babies.',
+          'WASD / Arrow keys to move\n[ S / ESC to skip ]',
+        )
+        this.demoMosquito.setVisible(false)
+        uiController.showTutorialHighlightBaby()
+        break
+
+      case 1: {
+        uiController.showTutorialText('Bite the red targets\nto collect blood.', '')
+        uiController.removeTutorialHighlight()
+        const firstTarget = this.skinLayer.targets.values().next().value
+        if (firstTarget) {
+          this.demoMosquito.setPosition(GAME_WIDTH / 2, GAME_HEIGHT / 2).setVisible(true)
+          this.tweens.add({
+            targets: this.demoMosquito,
+            x: firstTarget.x, y: firstTarget.y,
+            duration: 1200, ease: 'Sine.easeInOut',
+          })
+          this.tutRing.setPosition(firstTarget.x, firstTarget.y).setRadius(50).setVisible(true)
+          this.tweens.add({
+            targets: this.tutRing,
+            scaleX: 1.4, scaleY: 1.4, alpha: 0.4,
+            duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+          })
+        }
+        break
+      }
+
+      case 2:
+        uiController.showTutorialText('Deliver blood\nto the baby nest.', '')
+        uiController.removeTutorialHighlight()
+        this.tweens.add({
+          targets: this.demoMosquito,
+          x: this.dpPos.x, y: this.dpPos.y,
+          duration: 1200, ease: 'Sine.easeInOut',
+        })
+        this.tutRing.setPosition(this.dpPos.x, this.dpPos.y)
+          .setRadius(BALANCE.DELIVERY_RADIUS + 20).setVisible(true)
+        this.tweens.add({
+          targets: this.tutRing,
+          scaleX: 1.4, scaleY: 1.4, alpha: 0.4,
+          duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+        })
+        break
+
+      case 3:
+        uiController.showTutorialText("Don't get caught.\nGreed scores higher.", '')
+        uiController.removeTutorialHighlight()
+        this.tweens.killTweensOf(this.demoMosquito)
+        this.demoMosquito.setVisible(false)
+        break
+    }
+  }
+
+  /**
+   * 皮膚テクスチャをフェードで切り替える
+   * fade out (100ms) → テクスチャ変更 → fade in (100ms)
+   */
+  private switchSkinTexture(stageId: string): void {
+    if (this.skinTransitioning) return
+    this.skinTransitioning = true
+
+    const textureKey = stageId === 'face' ? 'skin_face'
+                     : stageId === 'arm'  ? 'skin_arm'
+                     : 'skin_leg'
+
+    this.tweens.add({
+      targets:  this.skinBackground,
+      alpha:    0,
+      duration: 150,
+      ease:     'Linear',
+      onComplete: () => {
+        this.skinBackground.setTexture(textureKey)
+        this.skinBackground.setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
+        this.tweens.add({
+          targets:  this.skinBackground,
+          alpha:    1,
+          duration: 150,
+          ease:     'Linear',
+          onComplete: () => { this.skinTransitioning = false },
+        })
+      },
+    })
+  }
+
   private spawnInitialTargets(): void {
     for (let i = 0; i < TARGET_COUNT; i++) this.placeTarget()
   }
@@ -395,6 +647,11 @@ export class GameScene extends Phaser.Scene {
                           : BALANCE.DELIVERY_MIN_DIST_FROM_SPOT
     }
 
+    // Visual tier for the target ring
+    const tier: 'near' | 'medium' | 'far' =
+      minDistFromDelivery >= BALANCE.TARGET_DIST_FAR    ? 'far'    :
+      minDistFromDelivery >= BALANCE.TARGET_DIST_MEDIUM ? 'medium' : 'near'
+
     for (let t = 0; t < maxTries; t++) {
       const x = Phaser.Math.Between(margin, GAME_WIDTH  - margin)
       const y = Phaser.Math.Between(margin, GAME_HEIGHT - margin)
@@ -406,7 +663,7 @@ export class GameScene extends Phaser.Scene {
         Phaser.Math.Distance.Between(x, y, p.x, p.y) < TARGET_MIN_DIST)
       if (tooClose) continue
 
-      this.skinLayer.addTarget(x, y)
+      this.skinLayer.addTarget(x, y, tier)
       return
     }
     // Fallback to minimum distance only
@@ -414,13 +671,14 @@ export class GameScene extends Phaser.Scene {
       const x = Phaser.Math.Between(margin, GAME_WIDTH  - margin)
       const y = Phaser.Math.Between(margin, GAME_HEIGHT - margin)
       if (Phaser.Math.Distance.Between(x, y, this.dpPos.x, this.dpPos.y) >= BALANCE.DELIVERY_MIN_DIST_FROM_SPOT) {
-        this.skinLayer.addTarget(x, y)
+        this.skinLayer.addTarget(x, y, 'near')
         return
       }
     }
     this.skinLayer.addTarget(
       Phaser.Math.Between(margin, GAME_WIDTH  - margin),
       Phaser.Math.Between(margin, GAME_HEIGHT - margin),
+      'near',
     )
   }
 
@@ -475,6 +733,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   private onDelivery(bloodAmount: number, isFull: boolean): void {
+    // チュートリアル中は納品処理しない (deliveryPoint を更新しないため通常は発火しない)
+    if (this.tutorialManager.isActive()) return
+
     const alertPercent   = this.alertSystem.getPercent()
     const hungerBonus    = this.hungerSystem.getBonus()
     const stageMult      = this.stageSystem.getScoreMult()
@@ -503,6 +764,81 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /** プレイ回数を localStorage に記録 (チュートリアルOFFデフォルト切替用) */
+  private incrementPlayCount(): void {
+    const count = parseInt(localStorage.getItem('mosquito_plays') ?? '0') + 1
+    localStorage.setItem('mosquito_plays', String(count))
+  }
+
+  /**
+   * チュートリアル完了後に ENTER で呼ばれる。
+   * オーバーレイをフェードアウトし全ゲーム状態をリセットして本番ゲームを開始する。
+   */
+  private resetForGameStart(): void {
+    // ハンドラを外す (二重呼び出し防止)
+    document.removeEventListener('keydown', this._tutEnterHandler, { capture: true })
+    document.removeEventListener('keydown', this._tutSkipHandler,  { capture: true })
+
+    // プレイカウントを +1 (2回目以降はチュートリアルがOFF デフォルト)
+    this.incrementPlayCount()
+
+    // チュートリアル完了 → isActive() が false になりゲームループが通常に戻る
+    this.tutorialManager.confirmStart()
+
+    // 手攻撃を再開
+    this.hand.enable()
+
+    // オーバーレイをフェードアウト
+    this.tweens.killTweensOf(this.tutSubText)
+    this.tweens.add({
+      targets:  [this.tutOverlay, this.tutText, this.tutSubText],
+      alpha:    0,
+      duration: 400,
+      ease:     'Linear',
+    })
+    uiController.removeTutorialHighlight()
+    uiController.hideTutorialText()
+    this.tweens.killTweensOf(this.demoMosquito)
+    this.demoMosquito.setVisible(false)
+
+    // ゲームプレイ状態リセット
+    this.bloodSystem.reset()
+    this.alertSystem.reset()
+    this.hungerSystem.reset()
+    this.scoreSystem.reset()
+    this.stageSystem  = new StageSystem()
+    this.eventSystem  = new EventSystem()
+    this.elapsedSec   = 0
+    this.hourglassTimer   = 0
+    this.sugarDropTimer   = 0
+    this.smokeFilterTimer = 0
+    this.shieldTimer      = 0
+    this.babyExcitedTimer = 0
+    this.milestoneIndex   = 0
+    this.greedActive      = false
+    this.prevSkinStage    = 'leg'
+    this.skinTransitioning = false
+
+    // アイテムシステムをリセット
+    this.itemSystem.destroy()
+    this.itemSystem = new ItemSystem(this)
+
+    // リスポーンタイマーをクリア
+    this.respawnTimers.forEach(t => t.destroy())
+    this.respawnTimers = []
+
+    // UI リセット
+    this.leftPanel.reset()
+    uiController.updateScore(0)
+    uiController.updateScoreGap(0, this.bestScore)
+    uiController.updateMilestone(GameScene.MILESTONES[0])
+    uiController.updateBabyState('normal')
+    uiController.updateActiveEffects([])
+    uiController.setMissionBanner(null)
+    uiController.updateGreedBonus(0)
+    this.shieldRing.setVisible(false)
+  }
+
   private pauseGame(): void {
     if (this.isGameOver || this.isPaused) return
     this.isPaused = true
@@ -527,7 +863,9 @@ export class GameScene extends Phaser.Scene {
     this.isPaused = false
     uiController.hidePauseOverlay()
     uiController.hidePauseButton()
-    document.removeEventListener('keydown', this._escHandler)
+    document.removeEventListener('keydown', this._escHandler,      { capture: true })
+    document.removeEventListener('keydown', this._tutEnterHandler,  { capture: true })
+    document.removeEventListener('keydown', this._tutSkipHandler,   { capture: true })
     this.leftPanel.hide()
     uiController.hideBabyUI()
     uiController.hideRightPanel()
@@ -538,6 +876,7 @@ export class GameScene extends Phaser.Scene {
     uiController.hideMilestone()
     uiController.updateActiveEffects([])
     uiController.setMissionBanner(null)
+    uiController.hideTutorialText()
     this.skinLayer.destroy()
     this.smokeSystem.destroy()
     this.itemSystem.destroy()
@@ -549,7 +888,9 @@ export class GameScene extends Phaser.Scene {
   private triggerGameOver(): void {
     if (this.isGameOver) return
     this.isGameOver = true
-    document.removeEventListener('keydown', this._escHandler)
+    document.removeEventListener('keydown', this._escHandler,      { capture: true })
+    document.removeEventListener('keydown', this._tutEnterHandler,  { capture: true })
+    document.removeEventListener('keydown', this._tutSkipHandler,   { capture: true })
     uiController.hidePauseButton()
     uiController.hideGameHUD()
     uiController.updateGreedBonus(0)

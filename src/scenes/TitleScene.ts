@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import { SCENE_KEYS } from '../data/constants'
 import { uiController } from '../ui/uiController'
+import { domRefs } from '../ui/domRefs'
 import { HighScoreManager } from '../systems/HighScoreManager'
 import { DailyBonusSystem } from '../systems/DailyBonusSystem'
 
@@ -23,9 +24,14 @@ export class TitleScene extends Phaser.Scene {
     const dailyBonus = new DailyBonusSystem()
     uiController.showDailyBonusOnTitle(dailyBonus.getBonus())
 
+    // チュートリアルトグル: 初回プレイはON、2回目以降はOFF
+    const playCount = parseInt(localStorage.getItem('mosquito_plays') ?? '0')
+    domRefs.tutorialToggle.checked = playCount === 0
+
     uiController.onStartClick(() => {
+      const showTutorial = domRefs.tutorialToggle.checked
       uiController.hideTitle()
-      this.scene.start(SCENE_KEYS.GAME)
+      this.scene.start(SCENE_KEYS.GAME, { showTutorial })
     })
   }
 }

@@ -45,10 +45,10 @@ export class SkinLayer {
   // Targets
   // --------------------------------------------------
 
-  addTarget(x: number, y: number): number {
+  addTarget(x: number, y: number, tier: 'near' | 'medium' | 'far' = 'near'): number {
     const id = this.nextId++
     const el = document.createElement('div')
-    el.className  = 'bite-target'
+    el.className  = `bite-target bite-target--${tier}`
     el.style.left = `${x}px`
     el.style.top  = `${y}px`
     this.layer.appendChild(el)
@@ -99,6 +99,15 @@ export class SkinLayer {
     }
 
     return { totalSucked, isSucking }
+  }
+
+  /**
+   * チュートリアル中: skin-layer DOM 要素を非表示にして
+   * Phaser canvas 上のチュートリアルオーバーレイを正しく見えるようにする
+   * (DOM 要素は Phaser canvas の上に重なるため、非表示にしないと overlay が隠れる)
+   */
+  setLayerVisible(visible: boolean): void {
+    this.layer.style.visibility = visible ? '' : 'hidden'
   }
 
   destroy(): void {

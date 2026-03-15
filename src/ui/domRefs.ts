@@ -105,10 +105,16 @@ export const domRefs = {
   get babyWrap()       { return getElement<HTMLElement>('lp-baby-wrap') },
   get babyImg()        { return getElement<HTMLImageElement>('lp-baby-img') },
 
+  // Tutorial text panel
+  get tutTextPanel() { return getElement<HTMLElement>('tut-text-panel') },
+  get tutMain()      { return getElement<HTMLElement>('tut-main') },
+  get tutSub()       { return getElement<HTMLElement>('tut-sub') },
+
   // タイトル
-  get titleScreen()    { return getElement<HTMLElement>('title-screen') },
-  get titleHighScore() { return getElement<HTMLElement>('title-highscore') },
-  get startButton()    { return getElement<HTMLButtonElement>('start-btn') },
+  get titleScreen()       { return getElement<HTMLElement>('title-screen') },
+  get titleHighScore()    { return getElement<HTMLElement>('title-highscore') },
+  get startButton()       { return getElement<HTMLButtonElement>('start-btn') },
+  get tutorialToggle()    { return getElement<HTMLInputElement>('tutorial-toggle') },
 
   // リザルト
   get resultScreen()       { return getElement<HTMLElement>('result-screen') },

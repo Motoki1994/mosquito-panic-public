@@ -22,6 +22,10 @@ export class LeftPanel {
   private alertLabel: HTMLElement
   private timerEl:    HTMLElement
 
+  private areaIconLeg:  HTMLImageElement
+  private areaIconArm:  HTMLImageElement
+  private areaIconFace: HTMLImageElement
+
   private elapsedSec: number = 0
 
   constructor() {
@@ -30,6 +34,10 @@ export class LeftPanel {
     this.charImg    = this.get<HTMLImageElement>('lp-char-img')
     this.alertLabel = this.get('lp-alert-label')
     this.timerEl    = this.get('lp-timer-value')
+
+    this.areaIconLeg  = this.get<HTMLImageElement>('lp-icon-leg')
+    this.areaIconArm  = this.get<HTMLImageElement>('lp-icon-arm')
+    this.areaIconFace = this.get<HTMLImageElement>('lp-icon-face')
   }
 
   // --------------------------------------------------
@@ -82,6 +90,16 @@ export class LeftPanel {
       this.charImg.src = src
       this.charImg.dataset.key = key
     }
+  }
+
+  /**
+   * エリアアイコンのハイライトを更新する
+   * 現在のステージを明るく、それ以外を暗くする
+   */
+  updateAreaIcons(stageId: string): void {
+    this.areaIconLeg.classList.toggle('lp-area-icon--active',  stageId === 'leg')
+    this.areaIconArm.classList.toggle('lp-area-icon--active',  stageId === 'arm')
+    this.areaIconFace.classList.toggle('lp-area-icon--active', stageId === 'face')
   }
 
   reset(): void {

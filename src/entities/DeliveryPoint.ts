@@ -71,10 +71,11 @@ export class DeliveryPoint {
     this.cooldownOverlay = scene.add.arc(x, y, r, 0, 360, false, 0x000000, 0)
     this.cooldownOverlay.setDepth(5)
 
-    // アイコン
-    this.icon = scene.add.text(x, y, '🍼', { fontSize: '22px' })
-      .setOrigin(0.5)
-      .setDepth(6)
+    // アイコン (padding を確保しないと Phaser の measureText が emoji を clip する)
+    this.icon = scene.add.text(x, y , '🍼', {
+      fontSize: '25px',
+      padding: { top: 8, bottom: 8, left: 4, right: 4 },
+    }).setOrigin(0.5).setDepth(6)
 
     // チャージ弧 (チャージ中のみ描画)
     this.chargeGraphics = scene.add.graphics().setDepth(7)

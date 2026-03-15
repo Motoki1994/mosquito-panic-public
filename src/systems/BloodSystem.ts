@@ -77,6 +77,7 @@ export class BloodSystem {
     uiController.updateBloodGauge(0)
     uiController.updateBloodStatus(0)  // FULL/HEAVYラベルを確実にクリア
     uiController.setBloodWarning(false)
+    uiController.setBloodFull(false)
   }
 
   /**
@@ -88,8 +89,9 @@ export class BloodSystem {
     uiController.updateBloodGauge(percent)
     uiController.updateBloodStatus(percent)
 
-    // 80%以上で警告色
+    // 80%以上で警告色、100%で満タングロー
     uiController.setBloodWarning(percent >= 80)
+    uiController.setBloodFull(this.isFull())
 
     // 満タン通知 (一度だけ)
     if (this.isFull() && !this.fullNotified) {

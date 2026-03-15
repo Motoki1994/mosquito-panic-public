@@ -29,8 +29,8 @@ const ITEM_DEFS: Record<ItemType, { icon: string; label: string; color: number }
   starvation_spike:  { icon: '💀', label: 'STARVATION SPIKE!', color: 0x553300 },
 }
 
-// ポジティブアイテムのスポーン候補 (shield は稀: 後から抽選)
-const BUFF_TYPES: ItemType[] = ['hourglass', 'calm_mist', 'sugar_drop', 'blood_boost', 'smoke_filter']
+// ポジティブアイテムのスポーン候補 (hourglass / shield は別抽選)
+const BUFF_TYPES: ItemType[] = ['calm_mist', 'sugar_drop', 'blood_boost', 'smoke_filter']
 const DEBUFF_TYPES: ItemType[] = ['rotten_blood', 'panic_surge', 'starvation_spike']
 
 const COLLECT_RADIUS    = 50
@@ -60,6 +60,7 @@ export class ItemSystem {
   private items: ActiveItem[] = []
   private buffCooldown: number  = 15   // ポジティブアイテム スポーン待機
   private debuffCooldown: number = 30  // デバフアイテム スポーン待機 (初期は長め)
+  private randomSpawnTimer: number = 15 + Math.random() * 10  // 時間ベーススポーン
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene
@@ -88,19 +89,29 @@ export class ItemSystem {
         || stageId === 'face'
         || isBehindPace
       if (shouldSpawn && Math.random() < 0.35) {
-        this.spawnBuff()
+        this.spawnBuff(stageId)
       }
       this.buffCooldown = 15 + Math.random() * 10
     }
 
-    // デバフアイテムのスポーン (最大1個)
+    // デバフアイテムのスポーン (FACEステージは最大2個・高確率・短クールダウン)
     this.debuffCooldown -= dt
     const debuffCount = this.items.filter(i => i.isDebuff).length
-    if (this.debuffCooldown <= 0 && debuffCount < 1) {
-      if (Math.random() < BALANCE.DEBUFF_SPAWN_CHANCE) {
+    const isFaceStage  = stageId === 'face'
+    const maxDebuffs   = isFaceStage ? 2 : 1
+    const debuffChance = isFaceStage ? Math.min(0.45, BALANCE.DEBUFF_SPAWN_CHANCE * 2.2) : BALANCE.DEBUFF_SPAWN_CHANCE
+    if (this.debuffCooldown <= 0 && debuffCount < maxDebuffs) {
+      if (Math.random() < debuffChance) {
         this.spawnDebuff()
       }
-      this.debuffCooldown = 20 + Math.random() * 15
+      this.debuffCooldown = isFaceStage ? 10 + Math.random() * 8 : 20 + Math.random() * 15
+    }
+
+    // 時間ベーススポーン — 15〜25秒ごとに強制的にアイテムを追加 (クラッチ救済)
+    this.randomSpawnTimer -= dt
+    if (this.randomSpawnTimer <= 0) {
+      this.tryRandomSpawn(stageId)
+      this.randomSpawnTimer = 15 + Math.random() * 10
     }
 
     // アイテム更新 (移動・寿命・収集判定)
@@ -178,12 +189,48 @@ export class ItemSystem {
   }
 
   /** ランダムなポジティブアイテムをスポーン */
-  private spawnBuff(): void {
-    // 5%の確率でシールド、それ以外は通常アイテム
-    const type: ItemType = Math.random() < 0.05
-      ? 'shield'
-      : BUFF_TYPES[Math.floor(Math.random() * BUFF_TYPES.length)]
+  private spawnBuff(stageId: string): void {
+    // LEG ステージでは sugar_drop を除外 (序盤の緊張感を維持するため)
+    const pool = stageId === 'leg'
+      ? BUFF_TYPES.filter(t => t !== 'sugar_drop')
+      : BUFF_TYPES
+
+    // 抽選テーブル (累積):
+    //   5%  → shield
+    //   6%  → hourglass (画面上に1個のみ。すでにある場合はスキップして通常アイテム)
+    //   残り → pool からランダム
+    const hasHourglass = this.items.some(i => i.type === 'hourglass')
+    const r = Math.random()
+    let type: ItemType
+    if (r < 0.05) {
+      type = 'shield'
+    } else if (!hasHourglass && r < 0.11) {
+      type = 'hourglass'
+    } else {
+      type = pool[Math.floor(Math.random() * pool.length)]
+    }
     this.spawn(type, false)
+  }
+
+  /**
+   * 時間ベーススポーン — 条件に関係なく定期的にアイテムを出現させる
+   * 画面上のアイテム合計が上限に達している場合は何もしない
+   */
+  private tryRandomSpawn(stageId: string): void {
+    const total = this.items.length
+    if (total >= 5) return  // 5個以上なら過密なのでスキップ
+
+    const count = Math.random() < 0.35 ? 2 : 1
+    for (let i = 0; i < count; i++) {
+      if (this.items.length >= 5) break
+      // 25%でデバフ、75%でバフ (FACEは35%でデバフ)
+      const debuffProb = stageId === 'face' ? 0.35 : 0.25
+      if (Math.random() < debuffProb) {
+        this.spawnDebuff()
+      } else {
+        this.spawnBuff(stageId)
+      }
+    }
   }
 
   /** ランダムなデバフアイテムをスポーン */
