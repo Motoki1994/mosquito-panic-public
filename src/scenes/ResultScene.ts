@@ -27,9 +27,38 @@ export class ResultScene extends Phaser.Scene {
 
     uiController.showResult(breakdown, highScore?.total ?? breakdown.total, isNewRecord)
 
-    uiController.onRetryClick(() => {
+    // 「惜しかった」表示 — 新記録でなく、生存15秒以上、スコア差が50%以内のケース
+    if (!isNewRecord && breakdown.survivalSec >= 15 && highScore) {
+      const deficit = highScore.total - breakdown.total
+      const scoreRate = breakdown.total / breakdown.survivalSec
+      const closeEnough = highScore.total > 0 && deficit / highScore.total <= 0.5
+      if (deficit > 0 && scoreRate > 0 && closeEnough) {
+        const neededSec = Math.ceil(deficit / scoreRate)
+        if (neededSec <= 90) {
+          uiController.showNearMiss(neededSec, deficit)
+        }
+      }
+    }
+
+    // Enter キーでリトライ (マウス不要の即時リスタート)
+    const enterHandler = (e: KeyboardEvent) => {
+      if (e.key !== 'Enter') return
+      document.removeEventListener('keydown', enterHandler)
       uiController.hideResult()
       this.scene.start(SCENE_KEYS.GAME)
+    }
+    document.addEventListener('keydown', enterHandler)
+
+    uiController.onRetryClick(() => {
+      document.removeEventListener('keydown', enterHandler)
+      uiController.hideResult()
+      this.scene.start(SCENE_KEYS.GAME)
+    })
+
+    uiController.onBackToTitleClick(() => {
+      document.removeEventListener('keydown', enterHandler)
+      uiController.hideResult()
+      this.scene.start(SCENE_KEYS.TITLE)
     })
   }
 }

@@ -7,12 +7,13 @@ type OnDeliverCallback = (bloodAmount: number, isFull: boolean) => void
 /**
  * DeliveryPoint — 「蚊の赤ちゃんに血を渡す場所」
  *
- * 責務: 納品エリアの表示・プレイヤー接触検知・納品コールバック通知
+ * 責務: 納品エリアの表示・プレイヤー接触検知・チャージ納品・コールバック通知
  *
- * - マップ上に1つ固定配置する
- * - プレイヤーが血液を持った状態で入ると自動納品
- * - 納品直後はクールダウンアニメーションが流れる
- * - 血液 0 のまま入っても何も起きない
+ * チャージ仕様:
+ *   - プレイヤーが血液を持ってエリアに入ると黄色の弧が填まり始める
+ *   - DELIVERY_CHARGE_SEC 秒間エリア内に留まると納品成立
+ *   - エリアを離れるとチャージがリセットされる
+ *   - 納品後 COOLDOWN_MS 間は再チャージ不可
  */
 export class DeliveryPoint {
   private scene: Phaser.Scene
@@ -25,6 +26,8 @@ export class DeliveryPoint {
   private icon: Phaser.GameObjects.Text
   /** 納品クールダウン中の暗いオーバーレイ */
   private cooldownOverlay: Phaser.GameObjects.Arc
+  /** チャージ進捗を示す弧 */
+  private chargeGraphics: Phaser.GameObjects.Graphics
 
   private x: number
   private y: number
@@ -38,6 +41,11 @@ export class DeliveryPoint {
   /** クールダウンタイマー */
   private cooldownTimer: Phaser.Time.TimerEvent | null = null
 
+  /** チャージ経過時間 (秒) */
+  private chargeTimer: number = 0
+  /** チャージ中かどうか */
+  private isCharging: boolean = false
+
   /** クールダウン時間 (ms) — 納品後この時間は受け付けない */
   private static readonly COOLDOWN_MS = 800
 
@@ -49,7 +57,7 @@ export class DeliveryPoint {
 
     const r = BALANCE.DELIVERY_RADIUS
 
-    // 外側リング (アニメーションで回転しているように見せる)
+    // 外側リング
     this.ring = scene.add.arc(x, y, r + 8, 0, 360, false, 0x00ccff, 0)
     this.ring.setStrokeStyle(2, 0x00ccff, 0.7)
     this.ring.setDepth(4)
@@ -68,6 +76,9 @@ export class DeliveryPoint {
       .setOrigin(0.5)
       .setDepth(6)
 
+    // チャージ弧 (チャージ中のみ描画)
+    this.chargeGraphics = scene.add.graphics().setDepth(7)
+
     // 常時パルスアニメ
     this.startIdleAnim()
   }
@@ -78,20 +89,43 @@ export class DeliveryPoint {
 
   /**
    * 毎フレーム呼ぶ
-   * プレイヤーが範囲内かつ血液を持っていれば納品する
+   * プレイヤーがエリア内に血液を持って留まり続けると
+   * DELIVERY_CHARGE_SEC 秒後に納品する
    *
    * @param playerX     プレイヤー X
    * @param playerY     プレイヤー Y
    * @param bloodAmount プレイヤーの現在血液量
    * @param isFull      満タンかどうか
+   * @param dt          フレーム間隔 (秒)
    */
-  update(playerX: number, playerY: number, bloodAmount: number, isFull: boolean): void {
+  update(playerX: number, playerY: number, bloodAmount: number, isFull: boolean, dt: number): void {
     if (this.onCooldown) return
-    if (bloodAmount <= 0) return
 
-    const dist = Phaser.Math.Distance.Between(playerX, playerY, this.x, this.y)
-    if (dist <= BALANCE.DELIVERY_RADIUS) {
-      this.triggerDelivery(bloodAmount, isFull)
+    const dist   = Phaser.Math.Distance.Between(playerX, playerY, this.x, this.y)
+    const inZone = dist <= BALANCE.DELIVERY_RADIUS
+    const hasBlood = bloodAmount > 0
+
+    if (inZone && hasBlood) {
+      if (!this.isCharging) {
+        this.isCharging  = true
+        this.chargeTimer = 0
+      }
+      this.chargeTimer += dt
+      const progress = Math.min(this.chargeTimer / BALANCE.DELIVERY_CHARGE_SEC, 1)
+      this.drawChargeArc(progress)
+
+      if (this.chargeTimer >= BALANCE.DELIVERY_CHARGE_SEC) {
+        this.isCharging  = false
+        this.chargeTimer = 0
+        this.chargeGraphics.clear()
+        this.triggerDelivery(bloodAmount, isFull)
+      }
+    } else {
+      if (this.isCharging) {
+        this.isCharging  = false
+        this.chargeTimer = 0
+        this.chargeGraphics.clear()
+      }
     }
   }
 
@@ -107,6 +141,7 @@ export class DeliveryPoint {
   /** 破棄する */
   destroy(): void {
     this.cooldownTimer?.destroy()
+    this.chargeGraphics.destroy()
     this.ring.destroy()
     this.core.destroy()
     this.cooldownOverlay.destroy()
@@ -116,6 +151,25 @@ export class DeliveryPoint {
   // --------------------------------------------------
   // Private
   // --------------------------------------------------
+
+  /**
+   * チャージ進捗弧を描画する
+   * 12時位置 (-90°) から時計回りに progress × 360° 分の弧
+   */
+  private drawChargeArc(progress: number): void {
+    if (progress <= 0) return
+    const r = BALANCE.DELIVERY_RADIUS + 14
+
+    // 色を進捗に合わせて緑→黄→白に変化
+    const color = progress < 0.5 ? 0xffaa00 : progress < 0.9 ? 0xffdd00 : 0xffffff
+
+    this.chargeGraphics.clear()
+    this.chargeGraphics.lineStyle(4, color, 1)
+    this.chargeGraphics.beginPath()
+    // Phaser arc は度数 (0° = 3時方向、時計回り)
+    this.chargeGraphics.arc(this.x, this.y, r, -90, -90 + progress * 360, false)
+    this.chargeGraphics.strokePath()
+  }
 
   /**
    * 納品を実行する
@@ -156,7 +210,6 @@ export class DeliveryPoint {
 
   /** 待機中の静かなパルスアニメ */
   private startIdleAnim(): void {
-    // リングが呼吸するように
     this.scene.tweens.add({
       targets: this.ring,
       scaleX: 1.08,
@@ -167,7 +220,6 @@ export class DeliveryPoint {
       repeat: -1,
       ease: 'Sine.easeInOut',
     })
-    // コアが微妙に輝く
     this.scene.tweens.add({
       targets: this.core,
       alpha: 0.65,

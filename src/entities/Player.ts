@@ -144,6 +144,21 @@ export class Player {
   getPosition(): { x: number; y: number } { return { x: this.container.x, y: this.container.y } }
   getSprite(): Phaser.GameObjects.Container { return this.container }
 
+  /**
+   * 風などの外力をプレイヤー位置に加算する
+   * handleMovement() の後に GameScene から呼ぶ
+   * @param windX  X方向の力 (px/s)
+   * @param windY  Y方向の力 (px/s)
+   * @param dt     フレーム間隔 (秒)
+   */
+  applyWind(windX: number, windY: number, dt: number): void {
+    this.container.x += windX * dt
+    this.container.y += windY * dt
+    const margin = 12
+    this.container.x = Phaser.Math.Clamp(this.container.x, margin, GAME_WIDTH  - margin)
+    this.container.y = Phaser.Math.Clamp(this.container.y, margin, GAME_HEIGHT - margin)
+  }
+
   destroy(): void { this.container.destroy() }
 
   // --------------------------------------------------

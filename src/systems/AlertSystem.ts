@@ -27,12 +27,15 @@ export class AlertSystem {
 
   /**
    * 毎フレーム警戒度を更新する
-   * @param dt         フレーム間隔 (秒)
-   * @param sucking    吸血中かどうか
-   * @param moveSpeed  プレイヤーの実際の移動速度 (px/s)
-   * @param inSafeZone 納品エリア内かどうか
+   * @param dt           フレーム間隔 (秒)
+   * @param sucking      吸血中かどうか
+   * @param moveSpeed    プレイヤーの実際の移動速度 (px/s)
+   * @param inSafeZone   納品エリア内かどうか
+   * @param externalMult アラート上昇速度への外部乗数
+   *                     = stageAlertMult × (isInSmoke ? SMOKE_ALERT_MULT : 1.0)
+   *                     減衰には影響しない (逃げると必ず下がる設計を維持)
    */
-  update(dt: number, sucking: boolean, moveSpeed: number, inSafeZone: boolean): void {
+  update(dt: number, sucking: boolean, moveSpeed: number, inSafeZone: boolean, externalMult: number = 1.0): void {
     // 静止判定
     if (moveSpeed <= BALANCE.ALERT_IDLE_SPEED_THRESHOLD) {
       this.idleTimer += dt
@@ -44,11 +47,11 @@ export class AlertSystem {
       this.isIdle = true
     }
 
-    // 警戒度更新
+    // 警戒度更新 (上昇には externalMult を適用、減衰には適用しない)
     if (sucking) {
-      this.alert = Math.min(100, this.alert + BALANCE.ALERT_RATE_SUCKING * dt)
+      this.alert = Math.min(100, this.alert + BALANCE.ALERT_RATE_SUCKING * externalMult * dt)
     } else if (this.isIdle && !inSafeZone) {
-      this.alert = Math.min(100, this.alert + BALANCE.ALERT_RATE_IDLE * dt)
+      this.alert = Math.min(100, this.alert + BALANCE.ALERT_RATE_IDLE * externalMult * dt)
     } else {
       const decayRate = inSafeZone
         ? BALANCE.ALERT_DECAY_RATE * BALANCE.ALERT_SAFE_ZONE_DECAY_MULT
@@ -79,6 +82,32 @@ export class AlertSystem {
 
   getAmount(): number {
     return this.alert
+  }
+
+  /**
+   * 指定した量だけアラートを直接増加する (デバフアイテム効果)
+   */
+  addDirect(amount: number): void {
+    this.alert = Math.min(100, this.alert + amount)
+    uiController.updateAlertGauge(this.alert)
+    const level = this.getLevel()
+    if (level !== this.prevLevel) {
+      this.prevLevel = level
+      uiController.updateAlertLevel(level)
+    }
+  }
+
+  /**
+   * 指定した量だけアラートを直接削減する (アイテム効果など)
+   */
+  reduce(amount: number): void {
+    this.alert = Math.max(0, this.alert - amount)
+    uiController.updateAlertGauge(this.alert)
+    const level = this.getLevel()
+    if (level !== this.prevLevel) {
+      this.prevLevel = level
+      uiController.updateAlertLevel(level)
+    }
   }
 
   /**

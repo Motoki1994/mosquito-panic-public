@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { SCENE_KEYS } from '../data/constants'
 import { uiController } from '../ui/uiController'
 import { HighScoreManager } from '../systems/HighScoreManager'
+import { DailyBonusSystem } from '../systems/DailyBonusSystem'
 
 /**
  * TitleScene
@@ -14,8 +15,13 @@ export class TitleScene extends Phaser.Scene {
   }
 
   create(): void {
+    uiController.hideGameHUD()
+
     const record = HighScoreManager.load()
     uiController.showTitle(record?.total ?? null)
+
+    const dailyBonus = new DailyBonusSystem()
+    uiController.showDailyBonusOnTitle(dailyBonus.getBonus())
 
     uiController.onStartClick(() => {
       uiController.hideTitle()

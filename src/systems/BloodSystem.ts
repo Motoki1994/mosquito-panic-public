@@ -44,6 +44,15 @@ export class BloodSystem {
   }
 
   /**
+   * 煙などの外部効果で血液を減らす
+   * @param amount 減少量 (生値)
+   */
+  drain(amount: number): void {
+    this.blood = Math.max(0, this.blood - amount)
+    this.syncUI()
+  }
+
+  /**
    * 血液量をパーセント (0〜1) で返す
    * 重量システムが速度計算に使う
    */
@@ -66,6 +75,7 @@ export class BloodSystem {
     this.blood = 0
     this.fullNotified = false
     uiController.updateBloodGauge(0)
+    uiController.updateBloodStatus(0)  // FULL/HEAVYラベルを確実にクリア
     uiController.setBloodWarning(false)
   }
 

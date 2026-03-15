@@ -2,20 +2,16 @@
  * LeftPanel
  *
  * DOM-based left side UI panel.
- * Shows:
- *   - Mosquito UI character (changes by blood level × alert state)
- *   - Score
- *   - Speed
- *   - Blood bar
- *   - Alert bar
- *   - Timer
+ * Shows contextual information only — real-time meters live in the top HUD.
  *
- * The panel element (#left-panel) must exist in index.html.
+ *   - Mosquito portrait (changes by blood level × alert state)
+ *   - PHASE label (CALM / ALERT / DANGER / RAGE)
+ *   - AREA label (LEG / ARM / NECK / FACE)
+ *   - Timer
  */
 
 import { AlertLevel } from '../systems/AlertSystem'
 
-/** Blood level bucket for UI character selection */
 type BloodBucket = 'empty' | '25' | '50' | '100'
 type AlertState  = 'normal' | 'alert'
 
@@ -23,10 +19,6 @@ export class LeftPanel {
   private panel: HTMLElement
 
   private charImg:    HTMLImageElement
-  private scoreEl:    HTMLElement
-  private speedEl:    HTMLElement
-  private bloodFill:  HTMLElement
-  private alertFill:  HTMLElement
   private alertLabel: HTMLElement
   private timerEl:    HTMLElement
 
@@ -36,36 +28,20 @@ export class LeftPanel {
     this.panel = this.get('left-panel')
 
     this.charImg    = this.get<HTMLImageElement>('lp-char-img')
-    this.scoreEl    = this.get('lp-score-value')
-    this.speedEl    = this.get('lp-speed-value')
-    this.bloodFill  = this.get('lp-blood-fill')
-    this.alertFill  = this.get('lp-alert-fill')
     this.alertLabel = this.get('lp-alert-label')
     this.timerEl    = this.get('lp-timer-value')
   }
 
   // --------------------------------------------------
 
-  updateScore(score: number): void {
-    this.scoreEl.textContent = String(Math.floor(score))
-  }
-
-  updateSpeed(ratio: number): void {
-    this.speedEl.textContent = `${Math.round(ratio * 100)}%`
-    this.speedEl.className = 'lp-stat-value lp-speed ' +
-      (ratio >= 0.7 ? 'spd--fast' : ratio >= 0.4 ? 'spd--mid' : 'spd--slow')
-  }
-
-  updateBlood(percent: number): void {
-    this.bloodFill.style.width = `${Math.max(0, Math.min(100, percent))}%`
-  }
-
-  updateAlert(amount: number, level: AlertLevel): void {
-    this.alertFill.style.width = `${Math.max(0, Math.min(100, amount))}%`
-
+  /**
+   * Update PHASE label from alert level.
+   * Blood fill is handled by the HUD; only the label is shown here.
+   */
+  updateAlert(_amount: number, level: AlertLevel): void {
     const labels: Record<AlertLevel, string> = { 1: 'CALM', 2: 'ALERT', 3: 'DANGER', 4: 'RAGE' }
     this.alertLabel.textContent = labels[level]
-    this.alertFill.className = `lp-bar-fill lp-alert-fill lp-alert--lv${level}`
+    this.alertLabel.className = `lp-stat-value lp-phase-label lp-phase--lv${level}`
   }
 
   updateTimer(dt: number): void {
