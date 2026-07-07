@@ -42,9 +42,10 @@ export function setSavedTouchStickOffset(x: number, y: number): void {
 /**
  * TouchControls — mobile-only virtual joystick and pause affordance.
  *
- * The visual layer lives inside #game-area so it is scaled together with the
- * fixed canvas layout. Pointer math uses the element's scaled bounding rect,
- * so it stays correct under responsiveScale transforms.
+ * The visual layer is attached outside #game-wrapper and fixed to viewport,
+ * so controls can intentionally overflow the game frame on smartphones.
+ * Pointer math uses each control's bounding rect, so input remains accurate
+ * regardless of responsiveScale transforms applied to game content.
  */
 export class TouchControls {
   private readonly onMove: MoveHandler

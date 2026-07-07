@@ -93,6 +93,7 @@ body.mobile-landscape-shell #game-row {
 body.mobile-gameplay-landscape #game-row {
   display: block;
   width: 800px;
+  position: relative;
 }
 
 body.mobile-gameplay-portrait #game-row {
@@ -127,7 +128,7 @@ body.mobile-gameplay-landscape #game-area {
 }
 
 body.mobile-gameplay-landscape #top-bar {
-  width: 800px;
+  width: 100%;
   height: 44px;
   padding: 0 8px;
   gap: 6px;
@@ -135,9 +136,24 @@ body.mobile-gameplay-landscape #top-bar {
 
 body.mobile-gameplay-landscape #left-panel,
 body.mobile-gameplay-landscape #right-panel {
+  position: absolute;
+  top: 0;
+  height: 600px;
   width: 126px;
   padding: 10px 8px;
   gap: 8px;
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  z-index: 24;
+}
+
+body.mobile-gameplay-landscape #left-panel {
+  left: -126px;
+}
+
+body.mobile-gameplay-landscape #right-panel {
+  right: -126px;
 }
 
 body.mobile-gameplay-landscape #score-display {
@@ -832,9 +848,9 @@ font-family: var(--font-pixel);
    =========================== */
 .touch-controls {
   display: none;
-  position: absolute;
+  position: fixed;
   inset: 0;
-  z-index: 90;
+  z-index: 260;
   pointer-events: none;
   user-select: none;
   -webkit-user-select: none;
@@ -842,8 +858,8 @@ font-family: var(--font-pixel);
 
 .touch-stick {
   position: absolute;
-  left: calc(24px + var(--touch-stick-offset-x, 0px));
-  bottom: calc(24px + var(--touch-stick-offset-y, 0px));
+  left: calc(14px + max(0px, env(safe-area-inset-left) - 6px) + var(--touch-stick-offset-x, 0px));
+  bottom: calc(14px + max(0px, env(safe-area-inset-bottom) - 6px) + var(--touch-stick-offset-y, 0px));
   width: 116px;
   height: 116px;
   border-radius: 50%;
@@ -877,8 +893,8 @@ font-family: var(--font-pixel);
 
 .touch-pause-btn {
   position: absolute;
-  right: 24px;
-  bottom: 32px;
+  right: calc(14px + max(0px, env(safe-area-inset-right) - 6px));
+  bottom: calc(20px + max(0px, env(safe-area-inset-bottom) - 6px));
   width: 54px;
   height: 54px;
   border-radius: 50%;
@@ -936,8 +952,8 @@ font-family: var(--font-pixel);
 }
 
 body.mobile-gameplay-landscape .touch-stick {
-  left: calc(-46px + max(0px, env(safe-area-inset-left) - 10px) + var(--touch-stick-offset-x, 0px));
-  bottom: calc(-36px + max(0px, env(safe-area-inset-bottom) - 6px) + var(--touch-stick-offset-y, 0px));
+  left: calc(-24px + max(0px, env(safe-area-inset-left) - 6px) + var(--touch-stick-offset-x, 0px));
+  bottom: calc(-18px + max(0px, env(safe-area-inset-bottom) - 6px) + var(--touch-stick-offset-y, 0px));
   width: 180px;
   height: 180px;
   border-width: 3px;
@@ -953,12 +969,12 @@ body.mobile-gameplay-landscape .touch-stick-knob {
 }
 
 body.mobile-gameplay-landscape .touch-pause-btn {
-  right: calc(-22px + max(0px, env(safe-area-inset-right) - 10px));
-  bottom: calc(-18px + max(0px, env(safe-area-inset-bottom) - 6px));
+  right: calc(-18px + max(0px, env(safe-area-inset-right) - 6px));
+  bottom: calc(-14px + max(0px, env(safe-area-inset-bottom) - 6px));
   width: 72px;
   height: 72px;
   font-size: 20px;
-  --touch-menu-shift-x: -12px;
+  --touch-menu-shift-x: -20px;
 }
 
 /* ===========================
