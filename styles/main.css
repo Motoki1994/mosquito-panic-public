@@ -122,15 +122,21 @@ body.mobile-gameplay-portrait #game-area {
   box-shadow: none;
 }
 
-body.mobile-gameplay-landscape #left-panel,
-body.mobile-gameplay-landscape #right-panel {
-  display: none !important;
+body.mobile-gameplay-landscape #game-area {
+  overflow: visible;
 }
 
 body.mobile-gameplay-landscape #top-bar {
   width: 800px;
   padding: 0 8px;
   gap: 6px;
+}
+
+body.mobile-gameplay-landscape #left-panel,
+body.mobile-gameplay-landscape #right-panel {
+  width: 150px;
+  padding: 14px 10px;
+  gap: 12px;
 }
 
 body.mobile-gameplay-landscape #score-display {
@@ -747,8 +753,8 @@ font-family: var(--font-pixel);
 
 .touch-stick {
   position: absolute;
-  left: 24px;
-  bottom: 24px;
+  left: calc(24px + var(--touch-stick-offset-x, 0px));
+  bottom: calc(24px + var(--touch-stick-offset-y, 0px));
   width: 116px;
   height: 116px;
   border-radius: 50%;
@@ -796,10 +802,11 @@ font-family: var(--font-pixel);
   pointer-events: auto;
   touch-action: manipulation;
   box-shadow: 0 0 20px rgba(0,0,0,0.38);
+  transform: translateX(var(--touch-menu-shift-x, 0px));
 }
 
 .touch-pause-btn:active {
-  transform: scale(0.94);
+  transform: translateX(var(--touch-menu-shift-x, 0px)) scale(0.94);
   background: rgba(123,47,255,0.45);
 }
 
@@ -839,8 +846,8 @@ font-family: var(--font-pixel);
 }
 
 body.mobile-gameplay-landscape .touch-stick {
-  left: 20px;
-  bottom: 20px;
+  left: calc(-46px + var(--touch-stick-offset-x, 0px));
+  bottom: calc(-36px + var(--touch-stick-offset-y, 0px));
   width: 180px;
   height: 180px;
   border-width: 3px;
@@ -856,11 +863,12 @@ body.mobile-gameplay-landscape .touch-stick-knob {
 }
 
 body.mobile-gameplay-landscape .touch-pause-btn {
-  right: 18px;
-  bottom: 18px;
+  right: -26px;
+  bottom: -18px;
   width: 72px;
   height: 72px;
   font-size: 20px;
+  --touch-menu-shift-x: 0px;
 }
 
 /* ===========================
@@ -1654,6 +1662,8 @@ body.mobile-gameplay-landscape .touch-pause-btn {
   align-items: center;
   gap: 14px;
   min-width: 280px;
+  max-height: min(90dvh, 640px);
+  overflow-y: auto;
 }
 
 .pause-title {
@@ -1694,6 +1704,22 @@ body.mobile-gameplay-landscape .touch-pause-btn {
   border-top: 1px solid rgba(255,255,255,0.08);
   padding-top: 14px;
   margin-top: 4px;
+}
+
+.pause-stick-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding-top: 14px;
+}
+
+.pause-stick-title {
+  font-family: var(--font-pixel);
+  font-size: 7px;
+  color: #888;
+  letter-spacing: 1px;
 }
 
 .pause-vol-row {

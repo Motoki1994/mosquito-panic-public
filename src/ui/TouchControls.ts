@@ -2,6 +2,43 @@ import { domRefs } from './domRefs'
 
 type MoveHandler = (x: number, y: number) => void
 
+const STICK_OFFSET_X_KEY = 'touchStickOffsetX'
+const STICK_OFFSET_Y_KEY = 'touchStickOffsetY'
+const STICK_OFFSET_MIN = -220
+const STICK_OFFSET_MAX = 220
+
+function clampStickOffset(value: number): number {
+  return Math.max(STICK_OFFSET_MIN, Math.min(STICK_OFFSET_MAX, value))
+}
+
+function readStickOffset(key: string): number {
+  const raw = localStorage.getItem(key)
+  if (raw === null) return 0
+  const num = Number(raw)
+  if (!Number.isFinite(num)) return 0
+  return clampStickOffset(Math.round(num))
+}
+
+function applyStickOffsetCss(x: number, y: number): void {
+  domRefs.touchControls.style.setProperty('--touch-stick-offset-x', `${x}px`)
+  domRefs.touchControls.style.setProperty('--touch-stick-offset-y', `${y}px`)
+}
+
+export function getSavedTouchStickOffset(): { x: number; y: number } {
+  return {
+    x: readStickOffset(STICK_OFFSET_X_KEY),
+    y: readStickOffset(STICK_OFFSET_Y_KEY),
+  }
+}
+
+export function setSavedTouchStickOffset(x: number, y: number): void {
+  const clampedX = clampStickOffset(x)
+  const clampedY = clampStickOffset(y)
+  localStorage.setItem(STICK_OFFSET_X_KEY, String(clampedX))
+  localStorage.setItem(STICK_OFFSET_Y_KEY, String(clampedY))
+  applyStickOffsetCss(clampedX, clampedY)
+}
+
 /**
  * TouchControls — mobile-only virtual joystick and pause affordance.
  *
@@ -17,6 +54,8 @@ export class TouchControls {
   constructor(onMove: MoveHandler, onPause: () => void) {
     this.onMove = onMove
     this.onPause = onPause
+    const savedOffset = getSavedTouchStickOffset()
+    applyStickOffsetCss(savedOffset.x, savedOffset.y)
 
     domRefs.touchStick.addEventListener('pointerdown', this.onStickDown, { passive: false })
     domRefs.touchStick.addEventListener('pointermove', this.onStickMove, { passive: false })

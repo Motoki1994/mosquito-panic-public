@@ -14,6 +14,7 @@ import { JUICE } from '../data/juice'
 import { sfx } from '../systems/SfxManager'
 import { notificationQueue } from './NotificationQueue'
 import { getUiScale, refreshResponsiveScale } from './responsiveScale'
+import { getSavedTouchStickOffset, setSavedTouchStickOffset } from './TouchControls'
 
 /** 赤ちゃんの状態種別 */
 export type BabyState = 'normal' | 'hungry' | 'dizzy' | 'excited'
@@ -805,6 +806,31 @@ export const uiController = {
     domRefs.pauseResumeBtn.onclick = () => onResume()
     domRefs.pauseTitleBtn.onclick  = () => onTitle()
 
+    const stickOffset = getSavedTouchStickOffset()
+    domRefs.touchStickOffsetX.value = String(stickOffset.x)
+    domRefs.touchStickOffsetY.value = String(stickOffset.y)
+    domRefs.touchStickOffsetXVal.textContent = String(stickOffset.x)
+    domRefs.touchStickOffsetYVal.textContent = String(stickOffset.y)
+    domRefs.touchStickOffsetX.oninput = () => {
+      const x = parseInt(domRefs.touchStickOffsetX.value, 10) || 0
+      const y = parseInt(domRefs.touchStickOffsetY.value, 10) || 0
+      domRefs.touchStickOffsetXVal.textContent = String(x)
+      setSavedTouchStickOffset(x, y)
+    }
+    domRefs.touchStickOffsetY.oninput = () => {
+      const x = parseInt(domRefs.touchStickOffsetX.value, 10) || 0
+      const y = parseInt(domRefs.touchStickOffsetY.value, 10) || 0
+      domRefs.touchStickOffsetYVal.textContent = String(y)
+      setSavedTouchStickOffset(x, y)
+    }
+    domRefs.touchStickResetBtn.onclick = () => {
+      domRefs.touchStickOffsetX.value = '0'
+      domRefs.touchStickOffsetY.value = '0'
+      domRefs.touchStickOffsetXVal.textContent = '0'
+      domRefs.touchStickOffsetYVal.textContent = '0'
+      setSavedTouchStickOffset(0, 0)
+    }
+
     overlay.classList.remove('hidden')
   },
 
@@ -814,6 +840,9 @@ export const uiController = {
     domRefs.pauseTitleBtn.onclick  = null
     domRefs.musicVolume.oninput    = null
     domRefs.sfxVolume.oninput      = null
+    domRefs.touchStickOffsetX.oninput = null
+    domRefs.touchStickOffsetY.oninput = null
+    domRefs.touchStickResetBtn.onclick = null
   },
 
   // ==========================================

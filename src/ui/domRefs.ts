@@ -113,6 +113,11 @@ export const domRefs = {
   get sfxVolume()      { return getElement<HTMLInputElement>('sfx-volume') },
   get musicVolVal()    { return getElement<HTMLElement>('music-vol-val') },
   get sfxVolVal()      { return getElement<HTMLElement>('sfx-vol-val') },
+  get touchStickOffsetX()    { return getElement<HTMLInputElement>('touch-stick-offset-x') },
+  get touchStickOffsetY()    { return getElement<HTMLInputElement>('touch-stick-offset-y') },
+  get touchStickOffsetXVal() { return getElement<HTMLElement>('touch-stick-offset-x-val') },
+  get touchStickOffsetYVal() { return getElement<HTMLElement>('touch-stick-offset-y-val') },
+  get touchStickResetBtn()   { return getElement<HTMLButtonElement>('touch-stick-reset-btn') },
 
   // Baby portrait (Left Panel)
   get babyWrap()       { return getElement<HTMLElement>('lp-baby-wrap') },
