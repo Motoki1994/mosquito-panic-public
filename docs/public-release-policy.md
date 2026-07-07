@@ -6,6 +6,8 @@
 
 - `dist/index.html`
 - `dist/assets/`
+- `assets/ui/`
+- `assets/sprites/`
 - `dist/robots.txt`
 - 配信用の短い README
 
@@ -15,7 +17,6 @@
 - `.git/`
 - `src/`
 - `node_modules/`
-- `assets/` の元データ
 - `package.json`
 - `package-lock.json`
 - `vite.config.ts`

@@ -4,6 +4,7 @@ const { spawnSync } = require('child_process')
 
 const root = path.resolve(__dirname, '..')
 const distDir = path.join(root, 'dist')
+const runtimeAssetsDir = path.join(root, 'assets')
 const releaseRoot = path.join(root, 'release')
 const releaseDir = path.join(releaseRoot, 'mosquito-panic-public')
 
@@ -34,10 +35,10 @@ if (!fs.existsSync(distDir)) {
   process.exit(1)
 }
 
-run('node', [path.join('scripts', 'check-public-dist.cjs')])
-
 fs.rmSync(releaseDir, { recursive: true, force: true })
 copyDir(distDir, releaseDir)
+copyDir(runtimeAssetsDir, path.join(releaseDir, 'assets'))
+run('node', [path.join('scripts', 'check-public-dist.cjs'), path.join('release', 'mosquito-panic-public')])
 
 fs.writeFileSync(
   path.join(releaseDir, 'README.txt'),
@@ -47,6 +48,7 @@ fs.writeFileSync(
     'このフォルダは配信用です。',
     '想定する配信用リポジトリ: https://github.com/Motoki1994/mosquito-panic-public',
     '開発用の src/、.claude/、node_modules/、Git履歴は入れないでください。',
+    'ゲーム実行に必要な画像 assets/ui と assets/sprites は含まれます。',
     'このフォルダの中身だけを配信用リポジトリへ入れてください。',
     '公開操作と push は手動で行ってください。',
     '',

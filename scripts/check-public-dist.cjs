@@ -2,7 +2,9 @@ const fs = require('fs')
 const path = require('path')
 
 const root = path.resolve(__dirname, '..')
-const distDir = path.join(root, 'dist')
+const targetDir = process.argv[2]
+  ? path.resolve(root, process.argv[2])
+  : path.join(root, 'dist')
 
 const forbiddenPathParts = new Set([
   '.claude',
@@ -20,6 +22,8 @@ const forbiddenExtensions = new Set([
 const requiredFiles = [
   'index.html',
   'robots.txt',
+  path.join('assets', 'ui', 'skin', 'skin.png'),
+  path.join('assets', 'sprites', 'mosquito', 'mosquito_body_back_empty.png'),
 ]
 
 function fail(message) {
@@ -43,20 +47,20 @@ function walk(dir) {
   return files
 }
 
-if (!fs.existsSync(distDir)) {
-  fail('dist/ がありません。先に npm run build を実行してください。')
+if (!fs.existsSync(targetDir)) {
+  fail(`${path.relative(root, targetDir)}/ がありません。先に npm run build を実行してください。`)
   process.exit()
 }
 
 for (const file of requiredFiles) {
-  if (!fs.existsSync(path.join(distDir, file))) {
-    fail(`dist/${file} がありません。`)
+  if (!fs.existsSync(path.join(targetDir, file))) {
+    fail(`${path.relative(root, targetDir)}/${file} がありません。`)
   }
 }
 
-const distFiles = walk(distDir)
+const distFiles = walk(targetDir)
 for (const file of distFiles) {
-  const rel = path.relative(distDir, file)
+  const rel = path.relative(targetDir, file)
   const parts = rel.split(path.sep)
   const ext = path.extname(file)
 
@@ -69,10 +73,10 @@ for (const file of distFiles) {
   }
 }
 
-const html = fs.readFileSync(path.join(distDir, 'index.html'), 'utf8')
+const html = fs.readFileSync(path.join(targetDir, 'index.html'), 'utf8')
 if (!html.includes('noindex')) {
   fail('dist/index.html に noindex がありません。')
 }
 
 if (process.exitCode) process.exit()
-console.log('[release:check] OK: dist/ は公開用ファイルだけです。')
+console.log(`[release:check] OK: ${path.relative(root, targetDir)}/ は公開用ファイルだけです。`)
