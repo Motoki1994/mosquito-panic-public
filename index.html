@@ -187,6 +187,20 @@
                   <span class="pause-vol-val" id="sfx-vol-val">80</span>
                 </div>
               </div>
+              <div class="pause-stick-section">
+                <div class="pause-stick-title">STICK POSITION</div>
+                <div class="pause-vol-row">
+                  <label class="pause-vol-label" for="touch-stick-offset-x">X</label>
+                  <input type="range" id="touch-stick-offset-x" class="pause-slider" min="-220" max="220" step="1" value="0" />
+                  <span class="pause-vol-val" id="touch-stick-offset-x-val">0</span>
+                </div>
+                <div class="pause-vol-row">
+                  <label class="pause-vol-label" for="touch-stick-offset-y">Y</label>
+                  <input type="range" id="touch-stick-offset-y" class="pause-slider" min="-220" max="220" step="1" value="0" />
+                  <span class="pause-vol-val" id="touch-stick-offset-y-val">0</span>
+                </div>
+                <button id="touch-stick-reset-btn" class="btn-pause">RESET STICK</button>
+              </div>
             </div>
           </div>
 
@@ -217,7 +231,8 @@
 
             <p class="title-desc">
               Full tank delivery = big bonus.<br />
-              High alert = danger AND reward.
+              High alert = danger AND reward.<br />
+              スマホはブラウザのツールバー非表示を推奨します。
             </p>
 
             <div id="title-daily-bonus" class="title-daily-bonus hidden">
