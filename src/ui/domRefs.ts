@@ -17,6 +17,19 @@ export const domRefs = {
   get score()              { return getElement<HTMLElement>('score') },
   get scoreGap()           { return getElement<HTMLElement>('score-gap') },
   get comboDisplay()       { return getElement<HTMLElement>('combo-display') },
+  get comboTimerTrack()    { return getElement<HTMLElement>('combo-timer-track') },
+  get comboTimerFill()     { return getElement<HTMLElement>('combo-timer-fill') },
+
+  // ジュース演出用コンテナ
+  get gameWrapper()        { return getElement<HTMLElement>('game-wrapper') },
+  get gameArea()           { return getElement<HTMLElement>('game-area') },
+  get dangerVignette()     { return getElement<HTMLElement>('danger-vignette') },
+
+  // Touch controls
+  get touchControls()      { return getElement<HTMLElement>('touch-controls') },
+  get touchStick()         { return getElement<HTMLElement>('touch-stick') },
+  get touchStickKnob()     { return getElement<HTMLElement>('touch-stick-knob') },
+  get touchPauseBtn()      { return getElement<HTMLButtonElement>('touch-pause-btn') },
 
   // HUD — Blood
   get bloodGauge()         { return getElement<HTMLElement>('blood-gauge-fill') },

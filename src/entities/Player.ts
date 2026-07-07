@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import { GAME_WIDTH, GAME_HEIGHT } from '../data/constants'
 import { BALANCE } from '../data/balance'
+import { JUICE } from '../data/juice'
 
 /**
  * Player — mosquito sprite container
@@ -31,6 +32,17 @@ export class Player {
   private wobbleTween: Phaser.Tweens.Tween | null = null
   private isWobbling: boolean = false
 
+  /** 慣性付き速度 (px/s) — 加速度で目標値に追従する */
+  private velX: number = 0
+  private velY: number = 0
+
+  /** 羽ばたきトゥイーン (移動時に速める) */
+  private flapTweens: Phaser.Tweens.Tween[] = []
+
+  /** 吸血中の body パルストゥイーン */
+  private suckTween: Phaser.Tweens.Tween | null = null
+  private isSuckingVisual: boolean = false
+
   /** Current body texture key to avoid redundant setTexture calls */
   private currentBodyKey: string = 'body_empty'
 
@@ -41,6 +53,7 @@ export class Player {
     left: Phaser.Input.Keyboard.Key
     right: Phaser.Input.Keyboard.Key
   } | null = null
+  private touchInput = { x: 0, y: 0 }
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     this.scene = scene
@@ -63,22 +76,24 @@ export class Player {
     this.container.setDepth(10)
 
     // Wing flap tween — rotate around Y axis via scaleY
-    scene.tweens.add({
-      targets: this.wingL,
-      scaleY: -WING_SCALE,
-      duration: 70,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-    })
-    scene.tweens.add({
-      targets: this.wingR,
-      scaleY: -WING_SCALE,
-      duration: 70,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-    })
+    this.flapTweens = [
+      scene.tweens.add({
+        targets: this.wingL,
+        scaleY: -WING_SCALE,
+        duration: 70,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      }),
+      scene.tweens.add({
+        targets: this.wingR,
+        scaleY: -WING_SCALE,
+        duration: 70,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      }),
+    ]
 
     // Keyboard
     if (scene.input.keyboard) {
@@ -119,6 +134,9 @@ export class Player {
     // Full-blood belly wobble (scale ~1.05, yoyo)
     if (bloodPercent >= 1.0 && !this.isWobbling) {
       this.isWobbling = true
+      // 吸血パルスと競合しないよう停止する
+      this.suckTween?.stop()
+      this.suckTween = null
       this.wobbleTween = this.scene.tweens.add({
         targets: this.body,
         scaleX: 0.16 * 1.06,
@@ -144,6 +162,37 @@ export class Player {
   getPosition(): { x: number; y: number } { return { x: this.container.x, y: this.container.y } }
   getSprite(): Phaser.GameObjects.Container { return this.container }
 
+  setTouchInput(x: number, y: number): void {
+    this.touchInput.x = Phaser.Math.Clamp(x, -1, 1)
+    this.touchInput.y = Phaser.Math.Clamp(y, -1, 1)
+  }
+
+  /**
+   * 吸血中の視覚フィードバック — body を 6Hz でパルスさせる
+   * (満タンの wobble 中はそちらを優先)
+   */
+  setSucking(active: boolean): void {
+    if (active === this.isSuckingVisual) return
+    this.isSuckingVisual = active
+
+    if (active && !this.isWobbling) {
+      const halfPeriodMs = 1000 / JUICE.SUCK_PULSE_HZ / 2
+      this.suckTween = this.scene.tweens.add({
+        targets: this.body,
+        scaleX: 0.16 * 1.06,
+        scaleY: 0.16 * 1.06,
+        duration: halfPeriodMs,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      })
+    } else if (!active) {
+      this.suckTween?.stop()
+      this.suckTween = null
+      if (!this.isWobbling) this.body.setScale(0.16)
+    }
+  }
+
   /**
    * 風などの外力をプレイヤー位置に加算する
    * handleMovement() の後に GameScene から呼ぶ
@@ -165,26 +214,51 @@ export class Player {
 
   private handleMovement(delta: number): void {
     const dt = delta / 1000
-    let vx = 0, vy = 0
+    let ix = 0, iy = 0
 
-    if (this.cursors?.left.isDown  || this.wasd?.left.isDown)  vx -= 1
-    if (this.cursors?.right.isDown || this.wasd?.right.isDown) vx += 1
-    if (this.cursors?.up.isDown    || this.wasd?.up.isDown)    vy -= 1
-    if (this.cursors?.down.isDown  || this.wasd?.down.isDown)  vy += 1
+    if (this.cursors?.left.isDown  || this.wasd?.left.isDown)  ix -= 1
+    if (this.cursors?.right.isDown || this.wasd?.right.isDown) ix += 1
+    if (this.cursors?.up.isDown    || this.wasd?.up.isDown)    iy -= 1
+    if (this.cursors?.down.isDown  || this.wasd?.down.isDown)  iy += 1
 
-    if (vx !== 0 && vy !== 0) { vx /= Math.SQRT2; vy /= Math.SQRT2 }
+    ix += this.touchInput.x
+    iy += this.touchInput.y
 
-    this.container.x += vx * this.currentSpeed * dt
-    this.container.y += vy * this.currentSpeed * dt
+    const inputLen = Math.hypot(ix, iy)
+    if (inputLen > 1) {
+      ix /= inputLen
+      iy /= inputLen
+    }
 
-    // Flip sprite to face direction
-    if (vx < 0)      this.container.setScale(-1, 1)
-    else if (vx > 0) this.container.setScale(1, 1)
+    // 慣性: 目標速度へ加速度追従 (入力あり=ACCEL / なし=DECEL)
+    const targetVx = ix * this.currentSpeed
+    const targetVy = iy * this.currentSpeed
+    const hasInput = ix !== 0 || iy !== 0
+    const follow = Math.min(1, (hasInput ? JUICE.PLAYER_ACCEL : JUICE.PLAYER_DECEL) * dt)
+    this.velX += (targetVx - this.velX) * follow
+    this.velY += (targetVy - this.velY) * follow
+
+    this.container.x += this.velX * dt
+    this.container.y += this.velY * dt
+
+    // Flip sprite to face direction (入力ベース)
+    if (ix < 0)      this.container.setScale(-1, 1)
+    else if (ix > 0) this.container.setScale(1, 1)
+
+    // バンキング: 横方向の速度に応じて機体を傾ける
+    // (回転はスケール反転より後に適用されるため、左右どちら向きでも符号補正は不要)
+    const bankRatio = Phaser.Math.Clamp(this.velX / BALANCE.PLAYER_BASE_SPEED, -1, 1)
+    this.container.setRotation(bankRatio * JUICE.PLAYER_BANK_MAX_RAD)
+
+    // 移動中は羽ばたきを速める
+    const moving = Math.abs(this.velX) + Math.abs(this.velY) > 20
+    const flapScale = moving ? JUICE.WING_FLAP_MOVE_SCALE : 1
+    for (const t of this.flapTweens) t.timeScale = flapScale
 
     const margin = 12
     this.container.x = Phaser.Math.Clamp(this.container.x, margin, GAME_WIDTH  - margin)
     this.container.y = Phaser.Math.Clamp(this.container.y, margin, GAME_HEIGHT - margin)
 
-    this.lastMoveSpeed = Math.sqrt(vx * vx + vy * vy) * this.currentSpeed
+    this.lastMoveSpeed = Math.sqrt(this.velX * this.velX + this.velY * this.velY)
   }
 }

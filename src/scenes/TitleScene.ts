@@ -4,6 +4,7 @@ import { uiController } from '../ui/uiController'
 import { domRefs } from '../ui/domRefs'
 import { HighScoreManager } from '../systems/HighScoreManager'
 import { DailyBonusSystem } from '../systems/DailyBonusSystem'
+import { sfx } from '../systems/SfxManager'
 
 /**
  * TitleScene
@@ -28,7 +29,11 @@ export class TitleScene extends Phaser.Scene {
     const playCount = parseInt(localStorage.getItem('mosquito_plays') ?? '0')
     domRefs.tutorialToggle.checked = playCount === 0
 
+    // タイトルBGM (AudioContext 未初期化ならジェスチャ後に自動開始)
+    sfx.startMusic('title')
+
     uiController.onStartClick(() => {
+      sfx.init()  // ユーザージェスチャ内で AudioContext を確実に起動
       const showTutorial = domRefs.tutorialToggle.checked
       uiController.hideTitle()
       this.scene.start(SCENE_KEYS.GAME, { showTutorial })

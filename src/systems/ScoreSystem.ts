@@ -76,6 +76,19 @@ export class ScoreSystem {
       const tierMult = BALANCE.TIER_COMBO_MULT[Math.min(this.tierCombo, BALANCE.TIER_COMBO_MULT.length - 1)]
       uiController.updateDeliveryCombo(this.chain, this.tierCombo, tierMult)
     }
+
+    // コンボタイマーバー — チェイン継続中のみ残り時間を可視化する
+    if (this.chain > 1) {
+      const remain = 1 - this.timeSinceLastDelivery / BALANCE.DELIVERY_CHAIN_TIMEOUT_SEC
+      uiController.updateComboTimer(Math.max(0, remain))
+    } else {
+      uiController.updateComboTimer(0)
+    }
+  }
+
+  /** 現在のチェイン数 (演出・コンボ音階用) */
+  getChain(): number {
+    return this.chain
   }
 
   /**
@@ -95,7 +108,7 @@ export class ScoreSystem {
     stageMult: number = 1.0,
     dailyMult: number = 1.0,
     lastSecondMult: number = 1.0,
-  ): number {
+  ): { gained: number; totalMult: number } {
     // チェイン更新
     if (this.timeSinceLastDelivery < BALANCE.DELIVERY_CHAIN_TIMEOUT_SEC) {
       this.chain = Math.min(this.chain + 1, BALANCE.DELIVERY_CHAIN_MULT.length - 1)
@@ -148,8 +161,9 @@ export class ScoreSystem {
     uiController.updateScore(this.deliveryScore)
     uiController.updateDeliveryCombo(this.chain, this.tierCombo, totalMult)
     uiController.showDeliveryScore(gained, totalMult, isFull, alertPercent, lastSecondMult > 1.0)
+    uiController.updateComboTimer(this.chain > 1 ? 1 : 0)
 
-    return gained
+    return { gained, totalMult }
   }
 
   getBreakdown(): ScoreBreakdown {
@@ -175,6 +189,7 @@ export class ScoreSystem {
     this.timeSinceLastDelivery = Infinity
     uiController.updateScore(0)
     uiController.updateDeliveryCombo(0, 0, 1.0)
+    uiController.updateComboTimer(0)
   }
 
   // --------------------------------------------------

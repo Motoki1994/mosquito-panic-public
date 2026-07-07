@@ -10,6 +10,10 @@ import { AlertLevel } from '../systems/AlertSystem'
 import { StageConfig } from '../systems/StageSystem'
 import { DailyBonus } from '../systems/DailyBonusSystem'
 import { MissionState } from '../systems/MissionSystem'
+import { JUICE } from '../data/juice'
+import { sfx } from '../systems/SfxManager'
+import { notificationQueue } from './NotificationQueue'
+import { getUiScale, refreshResponsiveScale } from './responsiveScale'
 
 /** 赤ちゃんの状態種別 */
 export type BabyState = 'normal' | 'hungry' | 'dizzy' | 'excited'
@@ -22,14 +26,100 @@ const ALERT_PHASE_LABELS: Record<AlertLevel, string> = {
   4: 'RAGE',
 }
 
+// --- ジュース演出用の内部状態 (モジュールローカル) ---
+let displayedScore = 0        // カウントアップ表示中の値
+let lastBloodPct   = 0        // ダメージフラッシュ検出用
+let lastHungerPct  = 100
+let lastHudShakeAt = 0        // HUDシェイクのスロットル
+let lastChain      = 0        // コンボパンチ検出用
+let lastTierCombo  = 0
+let lastStarveSec  = -1       // 餓死カウントダウンtick検出用
+let resultAnim: { finish: () => void; cancel: () => void } | null = null
+
 export const uiController = {
+  setGameplayCursorHidden(hidden: boolean): void {
+    document.body.classList.toggle('gameplay-cursor-hidden', hidden)
+  },
 
   // ==========================================
   // スコア
   // ==========================================
 
+  /**
+   * スコア表示を更新する。
+   * 毎フレーム呼ばれる前提で、目標値へ lerp するカウントアップ演出を内蔵。
+   * 減少 (リセット) 時は即座にスナップする。
+   */
   updateScore(score: number): void {
-    domRefs.score.textContent = Math.floor(score).toLocaleString('en-US')
+    const target = Math.floor(score)
+    if (target < displayedScore) {
+      displayedScore = target
+    } else if (target > displayedScore) {
+      const diff = target - displayedScore
+      displayedScore = diff <= 1
+        ? target
+        : displayedScore + Math.max(1, Math.ceil(diff * JUICE.SCORE_TICK_LERP))
+    }
+    domRefs.score.textContent = displayedScore.toLocaleString('en-US')
+  },
+
+  /** スコア数字のスケールパンチ (加算着弾時) */
+  scorePop(): void {
+    const el = domRefs.score
+    el.classList.remove('score-pop')
+    void el.offsetWidth
+    el.classList.add('score-pop')
+  },
+
+  /**
+   * 飛翔スコア — 納品地点 (canvas座標) から TOP BAR のスコアへ数字が飛ぶ。
+   * 着弾時にスコアポップを発火する。
+   */
+  spawnFlyingScore(gameX: number, gameY: number, text: string): void {
+    const wrapper   = domRefs.gameWrapper
+    const areaRect  = domRefs.gameArea.getBoundingClientRect()
+    const wrapRect  = wrapper.getBoundingClientRect()
+    const scoreRect = domRefs.score.getBoundingClientRect()
+
+    // レスポンシブスケール補正 — getBoundingClientRect はスケール後の画面座標を
+    // 返すが、wrapper 内の left/top はスケール前のローカル座標で指定する必要がある
+    const scale = getUiScale()
+
+    const el = document.createElement('div')
+    el.className = 'fly-score'
+    el.textContent = text
+    el.style.left = `${(areaRect.left - wrapRect.left) / scale + gameX}px`
+    el.style.top  = `${(areaRect.top  - wrapRect.top)  / scale + gameY}px`
+    wrapper.appendChild(el)
+
+    // 2フレーム後に目的地へ (transition を確実に発火させる)
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      el.style.left = `${(scoreRect.left - wrapRect.left + scoreRect.width  / 2) / scale}px`
+      el.style.top  = `${(scoreRect.top  - wrapRect.top  + scoreRect.height / 2) / scale}px`
+      el.style.opacity = '0.85'
+      el.style.fontSize = '9px'
+    }))
+
+    window.setTimeout(() => {
+      el.remove()
+      this.scorePop()
+      sfx.play('tick')
+    }, JUICE.FLY_SCORE_MS + 60)
+  },
+
+  /**
+   * コンボタイマーバー — チェインが切れるまでの残り時間を表示する
+   * @param remainRatio 1=満タン 0=切れる寸前 (0以下で非表示)
+   */
+  updateComboTimer(remainRatio: number): void {
+    const track = domRefs.comboTimerTrack
+    if (remainRatio <= 0) {
+      track.classList.add('hidden')
+      return
+    }
+    track.classList.remove('hidden')
+    domRefs.comboTimerFill.style.width = `${Math.min(100, remainRatio * 100)}%`
+    track.classList.toggle('combo-timer--warn', remainRatio < JUICE.COMBO_TIMER_WARN)
   },
 
   /**
@@ -45,6 +135,8 @@ export const uiController = {
 
     if (!showChain && !showTier) {
       el.classList.add('hidden')
+      lastChain = chain
+      lastTierCombo = tierCombo
       return
     }
     el.classList.remove('hidden')
@@ -56,6 +148,17 @@ export const uiController = {
     el.classList.remove('combo--mid', 'combo--max')
     if (multiplier >= 2.0) el.classList.add('combo--max')
     else if (multiplier >= 1.3) el.classList.add('combo--mid')
+
+    // チェイン/ティア更新時のスケールパンチ — 深いチェインほど大きく弾む
+    if (chain > lastChain || tierCombo > lastTierCombo) {
+      const punchScale = Math.min(1.3 + Math.max(chain, tierCombo) * 0.06, 1.6)
+      el.style.setProperty('--combo-punch-scale', punchScale.toFixed(2))
+      el.classList.remove('combo-punch')
+      void el.offsetWidth
+      el.classList.add('combo-punch')
+    }
+    lastChain = chain
+    lastTierCombo = tierCombo
   },
 
   showDeliveryScore(score: number, multiplier: number, isFull: boolean, alertPercent: number = 0, isLastSecond: boolean = false): void {
@@ -79,7 +182,22 @@ export const uiController = {
   // ==========================================
 
   updateBloodGauge(percent: number): void {
-    domRefs.bloodGauge.style.width = `${Math.max(0, Math.min(100, percent))}%`
+    const clamped = Math.max(0, Math.min(100, percent))
+    const track = domRefs.bloodGaugeTrack
+    const drop = lastBloodPct - clamped
+
+    if (drop >= 40) {
+      // 納品の排出 — ゆっくり流れ出るトランジション
+      track.classList.add('gauge--drain')
+      window.setTimeout(() => track.classList.remove('gauge--drain'), 320)
+    } else if (drop >= 5) {
+      // デバフ等の急減 — ダメージフラッシュ + HUDシェイク
+      this._gaugeDamageFlash(track)
+      this.hudShake()
+    }
+    lastBloodPct = clamped
+
+    domRefs.bloodGauge.style.width = `${clamped}%`
     // 数値表示 (0〜100 の整数)
     domRefs.bloodValue.textContent = `${Math.round(percent)}%`
   },
@@ -117,7 +235,7 @@ export const uiController = {
   },
 
   showBloodFullNotice(): void {
-    this._flashNotice(domRefs.bloodFullNotice)
+    this._flashNotice(domRefs.bloodFullNotice, undefined, 2)
   },
 
   /** チュートリアル: DOM テキストパネルにメインテキストとサブテキストを表示 */
@@ -179,7 +297,7 @@ export const uiController = {
   },
 
   showHeavyNotice(): void {
-    this._flashNotice(domRefs.heavyNotice)
+    this._flashNotice(domRefs.heavyNotice, undefined, 0)
   },
 
   // ==========================================
@@ -188,6 +306,13 @@ export const uiController = {
 
   updateHungerGauge(percent: number): void {
     const clamped = Math.max(0, Math.min(100, percent))
+    // デバフによる急落を検出してフラッシュ
+    if (lastHungerPct - clamped >= 5) {
+      this._gaugeDamageFlash(domRefs.hungerGaugeTrack)
+      this.hudShake()
+    }
+    lastHungerPct = clamped
+
     domRefs.hungerGauge.style.width = `${clamped}%`
     domRefs.hungerValue.textContent = `${Math.round(clamped)}%`
     // percent はネストの「満腹度」: 低いほど危険
@@ -195,8 +320,35 @@ export const uiController = {
     domRefs.hungerGaugeTrack.classList.toggle('hunger--warn', isWarn)
   },
 
+  /** TOP BAR 全体を短くシェイク (スロットル付き) */
+  hudShake(): void {
+    const now = performance.now()
+    if (now - lastHudShakeAt < 400) return
+    lastHudShakeAt = now
+    const bar = domRefs.topBar
+    bar.classList.remove('hud-shake')
+    void bar.offsetWidth
+    bar.classList.add('hud-shake')
+  },
+
+  /** 危険ビネットの濃度 (0〜1) を設定する */
+  setDangerVignette(opacity: number): void {
+    domRefs.dangerVignette.style.opacity = String(Math.max(0, Math.min(1, opacity)))
+  },
+
+  /** Ph4 RAGE 中の軽いズーム (canvas + DOM層を一緒に拡大) */
+  setPh4Zoom(active: boolean): void {
+    domRefs.gameArea.classList.toggle('ph4-zoom', active)
+  },
+
+  _gaugeDamageFlash(track: HTMLElement): void {
+    track.classList.remove('gauge-flash-damage')
+    void track.offsetWidth
+    track.classList.add('gauge-flash-damage')
+  },
+
   showHungerWarning(): void {
-    this._flashNotice(domRefs.hungerNotice)
+    this._flashNotice(domRefs.hungerNotice, undefined, 2)
   },
 
   // ==========================================
@@ -310,8 +462,7 @@ export const uiController = {
 
   showStageChange(stage: StageConfig): void {
     const el = domRefs.stageNotice
-    el.textContent = `▶ AREA: ${stage.name} — ${stage.difficulty} (SCORE×${stage.scoreMult.toFixed(1)})`
-    this._flashNotice(el)
+    this._flashNotice(el, `▶ AREA: ${stage.name} — ${stage.difficulty} (SCORE×${stage.scoreMult.toFixed(1)})`, 2)
   },
 
   // ==========================================
@@ -329,10 +480,12 @@ export const uiController = {
 
   showGameHUD(): void {
     domRefs.topBar.classList.remove('hidden')
+    refreshResponsiveScale()
   },
 
   hideGameHUD(): void {
     domRefs.topBar.classList.add('hidden')
+    refreshResponsiveScale()
   },
 
   // ==========================================
@@ -361,10 +514,17 @@ export const uiController = {
   showStarvationCountdown(sec: number): void {
     domRefs.starvationCountdown.textContent = String(sec)
     domRefs.starvationOverlay.classList.remove('hidden')
+    lastStarveSec = sec
+    sfx.play('starveTick')
   },
 
   updateStarvationCountdown(sec: number): void {
     domRefs.starvationCountdown.textContent = String(sec)
+    // 1秒ごとに tick 音を鳴らす
+    if (sec !== lastStarveSec && sec > 0) {
+      lastStarveSec = sec
+      sfx.play('starveTick')
+    }
   },
 
   hideStarvationCountdown(): void {
@@ -409,6 +569,7 @@ export const uiController = {
   // ==========================================
 
   showTitle(highScore: number | null): void {
+    this.setGameplayCursorHidden(false)
     const el = domRefs.titleHighScore
     if (highScore !== null) {
       el.textContent = `BEST: ${highScore}`
@@ -418,10 +579,12 @@ export const uiController = {
     }
     domRefs.titleScreen.classList.remove('hidden')
     domRefs.resultScreen.classList.add('hidden')
+    refreshResponsiveScale()
   },
 
   hideTitle(): void {
     domRefs.titleScreen.classList.add('hidden')
+    refreshResponsiveScale()
   },
 
   // ==========================================
@@ -429,6 +592,7 @@ export const uiController = {
   // ==========================================
 
   showResult(breakdown: ScoreBreakdown, highScore: number, isNewRecord: boolean): void {
+    this.setGameplayCursorHidden(false)
     domRefs.finalScore.textContent        = String(breakdown.total)
     domRefs.resultDelivScore.textContent  = String(breakdown.deliveryScore)
     domRefs.resultDelivCount.textContent  = `${breakdown.deliveryCount}回`
@@ -445,10 +609,156 @@ export const uiController = {
     void screen.offsetWidth
     screen.classList.add('result--enter')
     screen.classList.remove('hidden')
+    refreshResponsiveScale()
+  },
+
+  /**
+   * リザルト演出版:
+   *   内訳3行を順にスライドイン → TOTAL を 1.2s でロールアップ →
+   *   NEW RECORD スラム + 紙吹雪 + ファンファーレ → SO CLOSE 表示
+   * Enter 1回目で skipResultAnimation() により即完了できる。
+   */
+  animateResult(
+    breakdown: ScoreBreakdown,
+    highScore: number,
+    isNewRecord: boolean,
+    nearMiss?: { neededSec: number; deficit: number },
+  ): void {
+    this.setGameplayCursorHidden(false)
+    this.cancelResultAnimation()
+
+    // 静的フィールドを先にセット
+    domRefs.resultDelivScore.textContent  = String(breakdown.deliveryScore)
+    domRefs.resultDelivCount.textContent  = `${breakdown.deliveryCount}回`
+    domRefs.resultSurvivalSec.textContent = `${breakdown.survivalSec}s`
+    domRefs.resultHighScore.textContent   = `BEST: ${highScore}`
+    domRefs.nearMiss.classList.add('hidden')
+    domRefs.newRecordBadge.classList.add('hidden')
+    domRefs.newRecordBadge.classList.remove('record-slam')
+    domRefs.finalScore.textContent = '0'
+
+    const rows = Array.from(
+      document.querySelectorAll<HTMLElement>('#result-screen .breakdown-row'),
+    )
+    rows.forEach(r => r.classList.add('row-hidden'))
+
+    const screen = domRefs.resultScreen
+    screen.classList.remove('hidden', 'result--enter')
+    void screen.offsetWidth
+    screen.classList.add('result--enter')
+    refreshResponsiveScale()
+
+    const timeouts: number[] = []
+    let raf: number | null = null
+    let done = false
+
+    const cleanup = () => {
+      timeouts.forEach(t => clearTimeout(t))
+      if (raf !== null) cancelAnimationFrame(raf)
+      resultAnim = null
+    }
+
+    const showTail = () => {
+      if (isNewRecord) {
+        domRefs.newRecordBadge.classList.remove('hidden')
+        domRefs.newRecordBadge.classList.add('record-slam')
+        sfx.play('fanfare')
+        this._confettiBurst()
+      }
+      if (nearMiss) this.showNearMiss(nearMiss.neededSec, nearMiss.deficit)
+    }
+
+    const finish = () => {
+      if (done) return
+      done = true
+      cleanup()
+      rows.forEach(r => r.classList.remove('row-hidden'))
+      domRefs.finalScore.textContent = breakdown.total.toLocaleString('en-US')
+      const totalEl = document.querySelector<HTMLElement>('.result-score-value')
+      if (totalEl) {
+        totalEl.classList.remove('total-punch')
+        void totalEl.offsetWidth
+        totalEl.classList.add('total-punch')
+      }
+      showTail()
+    }
+
+    const cancel = () => {
+      if (done) return
+      done = true
+      cleanup()
+    }
+
+    resultAnim = { finish, cancel }
+
+    // ① 内訳行を 150ms 間隔でスライドイン
+    rows.forEach((r, i) => {
+      timeouts.push(window.setTimeout(() => {
+        r.classList.remove('row-hidden')
+        sfx.play('tick')
+      }, 300 + i * 150))
+    })
+
+    // ② TOTAL ロールアップ (1.2s, ease-out) — 50ms 毎に tick 音
+    const ROLL_MS = 1200
+    const rollStart = 300 + rows.length * 150 + 150
+    timeouts.push(window.setTimeout(() => {
+      const t0 = performance.now()
+      let lastTickAt = 0
+      const step = (now: number) => {
+        if (done) return
+        const p = Math.min(1, (now - t0) / ROLL_MS)
+        const eased = 1 - Math.pow(1 - p, 3)
+        domRefs.finalScore.textContent =
+          Math.floor(breakdown.total * eased).toLocaleString('en-US')
+        if (now - lastTickAt > 50 && breakdown.total > 0) {
+          lastTickAt = now
+          sfx.play('tick')
+        }
+        if (p < 1) {
+          raf = requestAnimationFrame(step)
+        } else {
+          finish()
+        }
+      }
+      raf = requestAnimationFrame(step)
+    }, rollStart))
+  },
+
+  /** Enter 1回目: 演出をスキップして最終状態にする */
+  skipResultAnimation(): void {
+    resultAnim?.finish()
+  },
+
+  isResultAnimating(): boolean {
+    return resultAnim !== null
+  },
+
+  /** 演出を静かに中断する (リトライ等で画面ごと消える時) */
+  cancelResultAnimation(): void {
+    resultAnim?.cancel()
+  },
+
+  /** NEW RECORD 用の DOM 紙吹雪 */
+  _confettiBurst(): void {
+    const screen = domRefs.resultScreen
+    const colors = ['#ff5555', '#ffdd44', '#55ff88', '#5599ff', '#ff88cc', '#ffffff']
+    for (let i = 0; i < 30; i++) {
+      const c = document.createElement('div')
+      c.className = 'confetti'
+      c.style.left = `${Math.random() * 100}%`
+      c.style.background = colors[i % colors.length]
+      c.style.animationDuration = `${1.2 + Math.random() * 1.2}s`
+      c.style.animationDelay = `${Math.random() * 0.4}s`
+      screen.appendChild(c)
+      window.setTimeout(() => c.remove(), 3200)
+    }
   },
 
   hideResult(): void {
+    this.cancelResultAnimation()
     domRefs.resultScreen.classList.add('hidden')
+    refreshResponsiveScale()
   },
 
   // ==========================================
@@ -476,26 +786,24 @@ export const uiController = {
     domRefs.musicVolVal.textContent = String(musicVol)
     domRefs.sfxVolVal.textContent   = String(sfxVol)
 
-    const onMusicInput = () => {
+    // oninput 代入で単一化 (ESC 復帰時に removeEventListener が走らず
+    // リスナーが蓄積する問題を防ぐ)
+    domRefs.musicVolume.oninput = () => {
       const v = domRefs.musicVolume.value
       domRefs.musicVolVal.textContent = v
       localStorage.setItem('musicVol', v)
+      sfx.setMusicVolume(parseInt(v) / 100)
     }
-    const onSfxInput = () => {
+    domRefs.sfxVolume.oninput = () => {
       const v = domRefs.sfxVolume.value
       domRefs.sfxVolVal.textContent = v
       localStorage.setItem('sfxVol', v)
-    }
-    domRefs.musicVolume.addEventListener('input', onMusicInput)
-    domRefs.sfxVolume.addEventListener('input', onSfxInput)
-
-    const cleanup = () => {
-      domRefs.musicVolume.removeEventListener('input', onMusicInput)
-      domRefs.sfxVolume.removeEventListener('input', onSfxInput)
+      sfx.setSfxVolume(parseInt(v) / 100)
+      sfx.play('uiHover')  // 音量確認用のフィードバック (スロットル内蔵)
     }
 
-    domRefs.pauseResumeBtn.onclick = () => { cleanup(); onResume() }
-    domRefs.pauseTitleBtn.onclick  = () => { cleanup(); onTitle() }
+    domRefs.pauseResumeBtn.onclick = () => onResume()
+    domRefs.pauseTitleBtn.onclick  = () => onTitle()
 
     overlay.classList.remove('hidden')
   },
@@ -504,6 +812,8 @@ export const uiController = {
     domRefs.pauseOverlay.classList.add('hidden')
     domRefs.pauseResumeBtn.onclick = null
     domRefs.pauseTitleBtn.onclick  = null
+    domRefs.musicVolume.oninput    = null
+    domRefs.sfxVolume.oninput      = null
   },
 
   // ==========================================
@@ -540,7 +850,8 @@ export const uiController = {
   },
 
   flashMissionComplete(): void {
-    this._flashNotice(domRefs.missionComplete, '✓ MISSION COMPLETE!')
+    this._flashNotice(domRefs.missionComplete, '✓ MISSION COMPLETE!', 2)
+    sfx.play('milestone')
   },
 
   // ==========================================
@@ -608,32 +919,48 @@ export const uiController = {
     img.classList.remove('baby-pop', 'baby--dizzy')
   },
 
+  // ボタンのクリックハンドラは onclick 代入で単一化する。
+  // addEventListener + { once } は「クリックされないまま画面遷移」した場合に
+  // リスナーが残留・蓄積し、後で多重発火する (scene.start 二重実行) ため使わない。
+
   onStartClick(callback: () => void): void {
-    domRefs.startButton.addEventListener('click', callback, { once: true })
+    domRefs.startButton.onclick = () => {
+      domRefs.startButton.onclick = null
+      callback()
+    }
   },
 
   onRetryClick(callback: () => void): void {
-    domRefs.retryButton.addEventListener('click', callback, { once: true })
+    domRefs.retryButton.onclick = () => {
+      domRefs.retryButton.onclick = null
+      domRefs.backTitleButton.onclick = null
+      callback()
+    }
   },
 
   onBackToTitleClick(callback: () => void): void {
-    domRefs.backTitleButton.addEventListener('click', callback, { once: true })
+    domRefs.backTitleButton.onclick = () => {
+      domRefs.backTitleButton.onclick = null
+      domRefs.retryButton.onclick = null
+      callback()
+    }
   },
 
   // ==========================================
   // Private
   // ==========================================
 
-  _flashNotice(el: HTMLElement, text?: string): void {
-    if (text !== undefined) el.textContent = text
-    el.classList.remove('hidden', 'notice--flash')
-    void el.offsetWidth
-    el.classList.add('notice--flash')
-    el.classList.remove('hidden')
-    setTimeout(() => {
-      el.classList.add('hidden')
-      el.classList.remove('notice--flash')
-    }, 1800)
+  /**
+   * フラッシュ通知 — NotificationQueue 経由で重なりを防ぐ
+   * @param priority 0=低 1=通常 2=重要 (割り込み)
+   */
+  _flashNotice(el: HTMLElement, text?: string, priority = 1): void {
+    notificationQueue.show(el, text, priority)
+  },
+
+  /** 表示中・待機中の通知を全て消す (ゲームオーバー・タイトル復帰時) */
+  clearNotices(): void {
+    notificationQueue.clear()
   },
 
   _updateAeNone(): void {

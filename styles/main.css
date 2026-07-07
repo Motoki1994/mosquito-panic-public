@@ -19,6 +19,7 @@
   --lp-width:      170px;
   --rp-width:      175px;
   --topbar-height: 52px;
+  --cursor-mosquito: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Ctext x='5' y='23' font-size='21'%3E%F0%9F%A6%9F%3C/text%3E%3C/svg%3E") 16 16, auto;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -31,6 +32,308 @@ body {
   min-height: 100vh;
   font-family: var(--font-ui);
   overflow: hidden;
+  cursor: var(--cursor-mosquito);
+}
+
+button,
+input,
+label {
+  cursor: inherit;
+}
+
+body.gameplay-cursor-hidden,
+body.gameplay-cursor-hidden * {
+  cursor: none !important;
+}
+
+body.mobile-landscape-shell {
+  background: #05040c;
+}
+
+body.mobile-portrait-shell {
+  background: #05040c;
+}
+
+body.mobile-portrait-shell #game-wrapper {
+  width: 100vw;
+  height: 100dvh;
+  transform: none !important;
+}
+
+body.mobile-landscape-shell #game-wrapper {
+  width: 100vw;
+  height: 100dvh;
+  transform: none !important;
+}
+
+body.mobile-gameplay-landscape #game-wrapper {
+  position: fixed;
+  transform-origin: left top;
+}
+
+body.mobile-gameplay-portrait #game-wrapper {
+  width: 100vw;
+  height: 100dvh;
+  transform: none !important;
+}
+
+body.mobile-portrait-shell #game-row {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+body.mobile-landscape-shell #game-row {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+body.mobile-gameplay-portrait #game-row {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+body.mobile-portrait-shell #game-area {
+  width: 100vw;
+  height: 100dvh;
+  border: none;
+  box-shadow: none;
+}
+
+body.mobile-landscape-shell #game-area {
+  width: 100vw;
+  height: 100dvh;
+  border: none;
+  box-shadow: none;
+}
+
+body.mobile-gameplay-portrait #game-area {
+  width: 100vw;
+  height: 100dvh;
+  border: none;
+  box-shadow: none;
+}
+
+body.mobile-portrait-shell #game-container {
+  display: none;
+}
+
+body.mobile-landscape-shell #game-container {
+  display: none;
+}
+
+body.mobile-gameplay-portrait #game-container {
+  display: none;
+}
+
+body.mobile-gameplay-portrait .pause-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+}
+
+body.mobile-gameplay-portrait .rotate-device {
+  position: fixed;
+  inset: 0;
+  z-index: 1001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(123,47,255,0.28), transparent 34%),
+    rgba(5,4,12,0.90);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  text-align: center;
+  font-family: var(--font-ui);
+}
+
+body.mobile-gameplay-portrait .rotate-panel {
+  width: min(320px, calc(100vw - 40px));
+  padding: 28px 26px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  background: rgba(14,10,32,0.97);
+  border: 1px solid rgba(123,47,255,0.55);
+  box-shadow: 0 0 48px rgba(123,47,255,0.28), 0 0 100px rgba(0,0,0,0.6);
+}
+
+body.mobile-gameplay-portrait .rotate-icon {
+  width: 72px;
+  height: 72px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 42px;
+  color: #ffdd66;
+  box-shadow: 0 0 28px rgba(123,47,255,0.45);
+}
+
+body.mobile-gameplay-portrait .rotate-title {
+  font-family: var(--font-pixel);
+  font-size: 18px;
+  letter-spacing: 3px;
+}
+
+body.mobile-gameplay-portrait .rotate-copy {
+  font-size: 17px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.78);
+  line-height: 1.5;
+  margin-bottom: 6px;
+}
+
+body.mobile-gameplay-portrait #rotate-title-btn {
+  width: 100%;
+  margin-top: 4px;
+}
+
+body.mobile-portrait-shell #title-screen,
+body.mobile-portrait-shell #result-screen {
+  width: 100vw;
+  height: 100dvh;
+  padding: max(18px, env(safe-area-inset-top)) 20px max(18px, env(safe-area-inset-bottom));
+}
+
+body.mobile-landscape-shell #title-screen,
+body.mobile-landscape-shell #result-screen {
+  width: 100vw;
+  height: 100dvh;
+  padding: 10px max(16px, env(safe-area-inset-right)) 10px max(16px, env(safe-area-inset-left));
+}
+
+body.mobile-landscape-shell #title-screen {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+body.mobile-landscape-shell .title-mosquito {
+  font-size: clamp(36px, 9.5vw, 58px);
+  margin: 0 0 4px;
+}
+
+body.mobile-landscape-shell .title-main {
+  font-size: clamp(14px, 3vw, 20px);
+  white-space: nowrap;
+  text-align: center;
+  margin-bottom: 3px;
+}
+
+body.mobile-landscape-shell .title-sub {
+  margin-bottom: 10px;
+  font-size: 6px;
+  letter-spacing: 2px;
+}
+
+body.mobile-landscape-shell .title-desc {
+  margin-bottom: 6px;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+body.mobile-landscape-shell .title-how {
+  width: min(92vw, 360px);
+  margin-bottom: 7px;
+  padding: 8px 14px;
+  gap: 3px;
+}
+
+body.mobile-landscape-shell .how-item {
+  font-size: 11px;
+}
+
+body.mobile-landscape-shell .how-key {
+  font-size: 6px;
+}
+
+body.mobile-landscape-shell .title-daily-bonus {
+  width: min(92vw, 360px);
+  margin-bottom: 6px;
+  padding: 5px 12px;
+  font-size: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+  text-align: center;
+}
+
+body.mobile-landscape-shell .title-highscore,
+body.mobile-landscape-shell .title-tutorial-row,
+body.mobile-landscape-shell #start-btn {
+  grid-column: auto;
+}
+
+body.mobile-landscape-shell .title-highscore {
+  margin-bottom: 6px;
+  font-size: 7px;
+}
+
+body.mobile-landscape-shell .title-tutorial-row {
+  margin-bottom: 8px;
+  font-size: 8px;
+}
+
+body.mobile-landscape-shell #start-btn {
+  min-width: 220px;
+  padding: 12px 24px;
+  font-size: 9px;
+}
+
+body.mobile-portrait-shell .title-mosquito {
+  font-size: clamp(64px, 22vw, 96px);
+  margin-bottom: 10px;
+}
+
+body.mobile-portrait-shell .title-main {
+  font-size: clamp(17px, 5.2vw, 24px);
+  letter-spacing: 1px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+body.mobile-portrait-shell .title-sub {
+  font-size: 7px;
+  margin-bottom: 18px;
+  letter-spacing: 2px;
+}
+
+body.mobile-portrait-shell .title-how {
+  width: min(100%, 340px);
+  padding: 12px 16px;
+  margin-bottom: 14px;
+}
+
+body.mobile-portrait-shell .title-desc {
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+body.mobile-portrait-shell .title-daily-bonus {
+  width: min(100%, 340px);
+  justify-content: center;
+  flex-wrap: wrap;
+  row-gap: 5px;
+  text-align: center;
+}
+
+body.mobile-portrait-shell .title-tutorial-row {
+  margin-bottom: 18px;
+}
+
+body.mobile-portrait-shell .btn-primary {
+  min-width: min(280px, 82vw);
+  padding: 16px 26px;
+  font-size: 11px;
+}
+
+.rotate-device {
+  display: none;
 }
 
 /* ===========================
@@ -40,6 +343,11 @@ body {
   display: flex;
   flex-direction: column;
   position: relative;
+  /* レスポンシブ: JS (responsiveScale.ts) が transform: scale() を適用する。
+     body の flex 中央寄せ + 中心原点スケールで常に画面中央にフィットする */
+  transform-origin: center center;
+  flex-shrink: 0;
+  transition: transform 180ms ease-out;
 }
 
 /* ===========================
@@ -314,6 +622,112 @@ font-family: var(--font-pixel);
   inset: 0;
 }
 #game-container canvas { display: block; }
+
+/* ===========================
+   Touch controls
+   =========================== */
+.touch-controls {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 90;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.touch-stick {
+  position: absolute;
+  left: 24px;
+  bottom: 24px;
+  width: 116px;
+  height: 116px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.20);
+  background: radial-gradient(circle, rgba(255,255,255,0.10), rgba(10,8,22,0.36));
+  box-shadow: 0 0 24px rgba(0,0,0,0.45), inset 0 0 18px rgba(255,255,255,0.05);
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.touch-stick::before {
+  content: "";
+  position: absolute;
+  inset: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.16);
+}
+
+.touch-stick-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.24);
+  border: 1px solid rgba(255,255,255,0.38);
+  box-shadow: 0 0 18px rgba(123,47,255,0.35);
+  transform: translate(-50%, -50%);
+}
+
+.touch-pause-btn {
+  position: absolute;
+  right: 24px;
+  bottom: 32px;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.25);
+  background: rgba(10,8,22,0.58);
+  color: rgba(255,255,255,0.78);
+  font-family: var(--font-pixel);
+  font-size: 16px;
+  line-height: 1;
+  pointer-events: auto;
+  touch-action: manipulation;
+  box-shadow: 0 0 20px rgba(0,0,0,0.38);
+}
+
+.touch-pause-btn:active {
+  transform: scale(0.94);
+  background: rgba(123,47,255,0.45);
+}
+
+@media (hover: none), (pointer: coarse), (max-height: 600px) and (orientation: landscape) {
+  .touch-controls:not(.hidden) {
+    display: block;
+  }
+}
+
+@media (hover: none) and (orientation: landscape), (pointer: coarse) and (orientation: landscape), (max-height: 600px) and (orientation: landscape) {
+  body {
+    align-items: center;
+  }
+
+  .touch-stick {
+    left: 18px;
+    bottom: 18px;
+    width: 132px;
+    height: 132px;
+  }
+
+  .touch-stick::before {
+    inset: 42px;
+  }
+
+  .touch-stick-knob {
+    width: 52px;
+    height: 52px;
+  }
+
+  .touch-pause-btn {
+    right: 18px;
+    bottom: 22px;
+    width: 58px;
+    height: 58px;
+  }
+}
 
 /* ===========================
    Skin layer
@@ -606,7 +1020,12 @@ font-family: var(--font-pixel);
   height: 100%;
   width: 0%;
   border-radius: 4px;
-  transition: width 0.08s linear;
+  transition: width 120ms linear;
+}
+
+/* 納品時の 100→0 排出は少しゆっくり流れ出る */
+.gauge-track.gauge--drain .gauge-fill {
+  transition: width 250ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 #blood-gauge-fill {
@@ -1062,9 +1481,10 @@ font-family: var(--font-pixel);
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.14);
   color: rgba(255,255,255,0.55);
-  padding: 4px 9px;
+  padding: 4px 8px;
   cursor: pointer;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
   border-radius: 4px;
   flex-shrink: 0;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
@@ -1460,3 +1880,220 @@ font-family: var(--font-pixel);
    Utility
    =========================== */
 .hidden { display: none !important; }
+
+/* ===================================================
+   GAME JUICE — スコア演出・シェイク・通知スタック etc.
+   =================================================== */
+
+/* ---------- スコアポップ (加算時のパンチ) ---------- */
+@keyframes score-pop {
+  0%   { transform: scale(1.0); color: #aaff33; }
+  30%  { transform: scale(1.35); color: #ffee66; text-shadow: 0 0 20px rgba(255,238,80,0.95); }
+  100% { transform: scale(1.0); color: #aaff33; }
+}
+#score { display: inline-block; }
+#score.score-pop { animation: score-pop 0.35s cubic-bezier(0.22, 1, 0.36, 1); }
+
+/* ---------- 飛翔スコア (納品点 → TOP BAR) ---------- */
+.fly-score {
+  position: absolute;
+  z-index: 300;
+  font-family: var(--font-pixel);
+  font-size: 13px;
+  color: #ffee66;
+  text-shadow: 0 0 10px rgba(255,220,60,0.9), 0 0 22px rgba(255,170,0,0.5);
+  pointer-events: none;
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+  transition:
+    left 600ms cubic-bezier(0.5, -0.1, 0.4, 1),
+    top  600ms cubic-bezier(0.3, 0.4, 0.2, 1),
+    opacity 600ms linear,
+    font-size 600ms ease-in;
+}
+
+/* ---------- コンボタイマーバー ---------- */
+.combo-timer-track {
+  position: absolute;
+  top: 32px; right: 14px;
+  width: 96px; height: 5px;
+  background: rgba(255,255,255,0.10);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 3px;
+  overflow: hidden;
+  z-index: 10;
+  pointer-events: none;
+}
+.combo-timer-fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #22cc88, #66ffbb);
+  box-shadow: 0 0 6px rgba(80,255,170,0.7);
+  transition: width 90ms linear;
+  border-radius: 3px;
+}
+@keyframes combo-timer-panic { 50% { opacity: 0.35; } }
+.combo-timer-track.combo-timer--warn .combo-timer-fill {
+  background: linear-gradient(90deg, #cc2222, #ff6644);
+  box-shadow: 0 0 10px rgba(255,80,60,0.85);
+  animation: combo-timer-panic 0.3s step-end infinite;
+}
+
+/* コンボ表示のパンチ (チェイン更新時) */
+@keyframes combo-punch {
+  0%   { transform: scale(1.0); }
+  35%  { transform: scale(var(--combo-punch-scale, 1.35)); }
+  100% { transform: scale(1.0); }
+}
+#combo-display { transform-origin: top right; }
+#combo-display.combo-punch { animation: combo-punch 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
+
+/* ---------- 通知スタック ---------- */
+.notice-stack {
+  position: absolute;
+  top: 56px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  z-index: 50;
+  pointer-events: none;
+}
+/* スタック内の notice は固定座標指定を無効化して縦積みにする */
+.notice-stack .notice {
+  position: static;
+  left: auto; top: auto; bottom: auto;
+  transform: none;
+}
+@keyframes notice-stack-flash {
+  0%   { opacity: 0; transform: translateY(-8px) scale(0.95); }
+  10%  { opacity: 1; transform: translateY(0) scale(1.04); }
+  16%  { transform: translateY(0) scale(1.0); }
+  80%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+.notice--stack-flash { animation: notice-stack-flash 1.8s ease forwards; }
+
+/* ---------- ゲージのダメージフラッシュ / HUDシェイク ---------- */
+@keyframes gauge-damage-flash {
+  0%   { box-shadow: inset 0 0 0 20px rgba(255,255,255,0.85); }
+  40%  { box-shadow: inset 0 0 0 20px rgba(255,60,60,0.5); }
+  100% { box-shadow: inset 0 0 0 0 rgba(255,60,60,0); }
+}
+.gauge-track.gauge-flash-damage { animation: gauge-damage-flash 0.3s ease-out; }
+
+@keyframes hud-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-3px); }
+  45% { transform: translateX(3px); }
+  70% { transform: translateX(-2px); }
+  85% { transform: translateX(2px); }
+}
+#top-bar.hud-shake { animation: hud-shake 0.3s ease-out; }
+
+/* ---------- 危険ビネット (アラート60%以上で連続的に濃くなる) ---------- */
+.danger-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 8;
+  opacity: 0;
+  box-shadow: inset 0 0 110px 30px rgba(200, 0, 0, 0.85);
+  transition: opacity 180ms linear;
+}
+
+/* ---------- Ph4 ズーム (canvas + DOM層を一緒に拡大) ---------- */
+#game-area {
+  transition: transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+#game-area.ph4-zoom { transform: scale(1.02); }
+
+/* Ph4 中の ALERT ピル微振動 */
+@keyframes pill-tremble {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(-1px, 1px); }
+  50% { transform: translate(1px, -1px); }
+  75% { transform: translate(-1px, -1px); }
+}
+.gauge-pill--alert:has(.alert--lv4) { animation: pill-tremble 0.15s linear infinite; }
+
+/* ---------- リザルト演出 ---------- */
+.breakdown-row.row-hidden { opacity: 0; transform: translateX(-16px); }
+.breakdown-row {
+  transition: opacity 250ms ease-out, transform 250ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes total-punch {
+  0%   { transform: scale(1.0); }
+  40%  { transform: scale(1.18); text-shadow: 0 0 40px #ffee66, 0 0 80px rgba(255,200,0,0.6); }
+  100% { transform: scale(1.0); }
+}
+.result-score-value.total-punch { animation: total-punch 0.45s cubic-bezier(0.22, 1, 0.36, 1); }
+
+@keyframes new-record-slam {
+  0%   { opacity: 0; transform: scale(2.4) rotate(-6deg); }
+  60%  { opacity: 1; transform: scale(0.92) rotate(1deg); }
+  100% { opacity: 1; transform: scale(1.0) rotate(0); }
+}
+.new-record.record-slam { animation: new-record-slam 0.5s cubic-bezier(0.22, 1, 0.36, 1), record-glow 0.8s ease-in-out 0.5s infinite alternate; }
+
+/* 紙吹雪 */
+.confetti {
+  position: absolute;
+  top: -12px;
+  width: 8px; height: 12px;
+  z-index: 120;
+  pointer-events: none;
+  animation: confetti-fall linear forwards;
+}
+@keyframes confetti-fall {
+  0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+  85%  { opacity: 1; }
+  100% { transform: translateY(640px) rotate(720deg); opacity: 0; }
+}
+
+/* ---------- ボタン feel ---------- */
+.btn-primary,
+.btn-secondary {
+  transition: background 0.15s, transform 0.12s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.15s;
+}
+.btn-primary:hover {
+  background: var(--color-blood-light);
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 4px 22px rgba(255,68,68,0.55);
+}
+.btn-primary:active { transform: translateY(0) scale(0.96); box-shadow: 0 0 8px rgba(255,68,68,0.35); }
+.btn-secondary:hover {
+  background: #5a76ff;
+  color: #fff;
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 4px 22px rgba(90,118,255,0.5);
+}
+.btn-secondary:active { transform: translateY(0) scale(0.96); }
+.btn-pause:active { transform: scale(0.97); }
+.pause-btn:active { transform: scale(0.94); }
+
+/* ---------- タイトル蚊の8の字浮遊 ---------- */
+@keyframes mosquito-fig8 {
+  0%   { transform: translate(0, 0) rotate(-5deg); }
+  25%  { transform: translate(9px, -9px) rotate(3deg); }
+  50%  { transform: translate(0, -13px) rotate(6deg); }
+  75%  { transform: translate(-9px, -6px) rotate(-3deg); }
+  100% { transform: translate(0, 0) rotate(-5deg); }
+}
+.title-mosquito { animation: mosquito-fig8 3.6s ease-in-out infinite; }
+
+/* ---------- reduced motion 対応 ---------- */
+@media (prefers-reduced-motion: reduce) {
+  #top-bar.hud-shake,
+  .gauge-pill--alert:has(.alert--lv4),
+  .combo-timer-track.combo-timer--warn .combo-timer-fill { animation: none; }
+  #game-area { transition: none; }
+  #game-area.ph4-zoom { transform: none; }
+}
+
+body:not(.gameplay-cursor-hidden),
+body:not(.gameplay-cursor-hidden) * {
+  cursor: var(--cursor-mosquito) !important;
+}

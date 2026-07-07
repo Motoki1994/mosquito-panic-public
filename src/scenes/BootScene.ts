@@ -33,6 +33,39 @@ export class BootScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.generateParticleTextures()
     this.scene.start(SCENE_KEYS.TITLE)
+  }
+
+  /**
+   * ジュース演出用のパーティクルテクスチャを実行時生成する (外部アセット不要)
+   *   px_circle: 8px 白丸 / px_drop: 血滴形 / px_spark: 菱形スパーク
+   */
+  private generateParticleTextures(): void {
+    const g = this.make.graphics({ x: 0, y: 0 }, false)
+
+    // 白丸
+    g.fillStyle(0xffffff, 1)
+    g.fillCircle(4, 4, 4)
+    g.generateTexture('px_circle', 8, 8)
+    g.clear()
+
+    // 血滴 (丸 + 上に尖り) — tint で色を付ける前提の白
+    g.fillStyle(0xffffff, 1)
+    g.fillCircle(3, 6, 3)
+    g.fillTriangle(3, 0, 1, 5, 5, 5)
+    g.generateTexture('px_drop', 6, 9)
+    g.clear()
+
+    // 菱形スパーク
+    g.fillStyle(0xffffff, 1)
+    g.fillPoints([
+      new Phaser.Geom.Point(3, 0),
+      new Phaser.Geom.Point(6, 3),
+      new Phaser.Geom.Point(3, 6),
+      new Phaser.Geom.Point(0, 3),
+    ], true)
+    g.generateTexture('px_spark', 6, 6)
+    g.destroy()
   }
 }

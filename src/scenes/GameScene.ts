@@ -18,8 +18,12 @@ import { ItemSystem, ItemType } from '../systems/ItemSystem'
 import { MissionSystem } from '../systems/MissionSystem'
 import { TutorialManager } from '../systems/TutorialManager'
 import { LeftPanel } from '../ui/LeftPanel'
+import { TouchControls } from '../ui/TouchControls'
 import { uiController, BabyState } from '../ui/uiController'
 import { BALANCE } from '../data/balance'
+import { JUICE, DeliverTier } from '../data/juice'
+import { JuiceManager, DeathCause } from '../systems/JuiceManager'
+import { sfx } from '../systems/SfxManager'
 
 const TARGET_COUNT      = 4
 const TARGET_MIN_DIST   = 150
@@ -44,15 +48,24 @@ export class GameScene extends Phaser.Scene {
   private itemSystem!: ItemSystem
   private missionSystem!: MissionSystem
   private leftPanel!: LeftPanel
+  private touchControls!: TouchControls
 
   private bestScore: number = 0
   private elapsedSec: number = 0
 
   private isGameOver = false
   private isPaused   = false
+  private orientationPaused = false
+  private orientationPauseWasInitial = false
+  private hasPlayStarted = false
   private prevSmokeZones = false
   private greedActive    = false
   private _escHandler!: (e: KeyboardEvent) => void
+
+  // ジュース演出
+  private juice!: JuiceManager
+  private wasSucking = false   // 吸血ループ音のエッジ検出
+  private prevFull   = false   // 血液100%到達の瞬間検出
 
   // Active item effect timers (seconds remaining)
   private hourglassTimer:    number = 0
@@ -93,6 +106,7 @@ export class GameScene extends Phaser.Scene {
   private tutStep: number = -1
   private _tutEnterHandler!: (e: KeyboardEvent) => void
   private _tutSkipHandler!:  (e: KeyboardEvent) => void
+  private _tutClickHandler!: (e: PointerEvent) => void
 
   constructor() { super({ key: SCENE_KEYS.GAME }) }
 
@@ -109,6 +123,9 @@ export class GameScene extends Phaser.Scene {
   create(): void {
     this.isGameOver      = false
     this.isPaused        = false
+    this.orientationPaused = false
+    this.orientationPauseWasInitial = false
+    this.hasPlayStarted = false
     this.ph4Active       = false
     this.prevSmokeZones  = false
     this.greedActive     = false
@@ -123,8 +140,15 @@ export class GameScene extends Phaser.Scene {
     this.prevSkinStage     = 'leg'
     this.skinTransitioning = false
     this.tutStep           = -1
+    this.wasSucking        = false
+    this.prevFull          = false
+
+    // ジュースマネージャ (ヒットストップ・シェイク・パーティクル・死亡演出)
+    this.juice = new JuiceManager(this)
 
     uiController.showGameHUD()
+    uiController.setDangerVignette(0)
+    uiController.setPh4Zoom(false)
     // イベントUIを明示的にリセット (前回プレイの残留状態を消去)
     uiController.hideWindIndicator()
     uiController.hideSmokeActive()
@@ -153,6 +177,10 @@ export class GameScene extends Phaser.Scene {
       .setDepth(0)
 
     this.player = new Player(this, GAME_WIDTH / 2, GAME_HEIGHT / 2)
+    this.touchControls = new TouchControls(
+      (x, y) => this.player.setTouchInput(x, y),
+      () => this.pauseGame(),
+    )
 
     // Skin DOM layer
     const gameContainer = document.getElementById('game-container')!
@@ -167,7 +195,16 @@ export class GameScene extends Phaser.Scene {
       (bloodAmount, isFull) => this.onDelivery(bloodAmount, isFull),
     )
 
-    this.hand          = new HumanHand(this, () => this.triggerGameOver())
+    this.hand          = new HumanHand(
+      this,
+      () => this.triggerGameOver('hit'),
+      (x, y) => {
+        // ニアミス報酬 — ギリギリ回避の快感
+        if (this.isGameOver || this.tutorialManager.isActive()) return
+        this.juice.nearMiss(x, y)
+        sfx.play('whoosh')
+      },
+    )
     this.smokeSystem   = new SmokeSystem(this)
     this.itemSystem    = new ItemSystem(this)
     this.missionSystem = new MissionSystem()
@@ -225,10 +262,16 @@ export class GameScene extends Phaser.Scene {
       this.tutorialManager.forceComplete()
       this.incrementPlayCount()
     }
+    uiController.setGameplayCursorHidden(!this.tutorialManager.isActive())
 
-    // チュートリアル中: 手攻撃を完全無効化
+    // チュートリアル中: 手攻撃を完全無効化 (BGMはタイトル曲を継続)
     if (this.tutorialManager.isActive()) {
       this.hand.disable()
+      this.touchControls.hide()
+    } else {
+      this.touchControls.show()
+      sfx.startMusic('game')
+      sfx.setMusicTension(0)
     }
 
     // デモ蚊 (チュートリアル自動演示用 — 実際のプレイヤーテクスチャを使用)
@@ -254,10 +297,20 @@ export class GameScene extends Phaser.Scene {
     }
     document.addEventListener('keydown', this._tutSkipHandler, { capture: true })
 
+    // クリック/タップ: チュートリアル最終ステップでゲーム開始
+    this._tutClickHandler = (e: PointerEvent) => {
+      if (!this.tutorialManager.isWaitingForEnter()) return
+      e.preventDefault()
+      this.resetForGameStart()
+    }
+    document.addEventListener('pointerdown', this._tutClickHandler, { capture: true })
+
     // ポーズボタン & ESCキー
     // チュートリアル中: ESC = スキップ (PRESS ENTER TO START へ)
     // 通常ゲーム中:   ESC = ポーズ/レジューム
     uiController.showPauseButton(() => this.pauseGame())
+    const rotateTitleBtn = document.getElementById('rotate-title-btn') as HTMLButtonElement | null
+    if (rotateTitleBtn) rotateTitleBtn.onclick = () => this.returnToTitle()
     this._escHandler = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || this.isGameOver) return
       if (this.tutorialManager.isActive() && !this.tutorialManager.isWaitingForEnter()) {
@@ -275,7 +328,11 @@ export class GameScene extends Phaser.Scene {
 
   update(_t: number, delta: number): void {
     if (this.isGameOver) return
-    const dt = delta / 1000
+    if (this.handleOrientationPause()) return
+    this.hasPlayStarted = true
+
+    // ヒットストップ中は論理時間を圧縮する (JuiceManager が実時間で管理)
+    const dt = (delta / 1000) * this.juice.getTimeScale()
 
     // ========== チュートリアルモード (自動デモ) ==========
     // プレイヤー入力・移動を完全にブロック。タイマーも凍結。
@@ -294,7 +351,7 @@ export class GameScene extends Phaser.Scene {
     }
     // ==========================================
 
-    this.player.update(delta)
+    this.player.update(delta * this.juice.getTimeScale())
 
     // 風イベント — 入力処理後に位置を補正
     const wind = this.eventSystem.update(dt, this.scoreSystem.getTotal())
@@ -316,6 +373,27 @@ export class GameScene extends Phaser.Scene {
     if (totalSucked > 0) {
       this.bloodSystem.add(totalSucked)
     }
+
+    // 吸血フィードバック — ループ音 (血液量でピッチ上昇) + パルス + 血滴
+    if (isSucking !== this.wasSucking) {
+      this.wasSucking = isSucking
+      this.player.setSucking(isSucking)
+      isSucking ? sfx.startSuckLoop() : sfx.stopSuckLoop()
+    }
+    if (isSucking) {
+      sfx.setSuckPitch(this.bloodSystem.getPercent())
+    }
+
+    // 血液100%到達の瞬間 — 小ヒットストップ + 金ポップ
+    const isFullNow = this.bloodSystem.isFull()
+    // 満タンの間は血が垂れる (吸いすぎ感の表現)
+    if (isFullNow) this.juice.bloodDrip(pos.x, pos.y)
+    if (isFullNow && !this.prevFull) {
+      this.juice.hitStop(JUICE.HITSTOP_FULLTANK_MS)
+      this.juice.fullTankPop(pos.x, pos.y)
+      sfx.play('fullTank')
+    }
+    this.prevFull = isFullNow
 
     const score        = this.scoreSystem.getTotal()
     const isInSmoke    = this.smokeSystem.update(dt, score, pos.x, pos.y)
@@ -339,6 +417,8 @@ export class GameScene extends Phaser.Scene {
     if (currentSkinStage !== this.prevSkinStage) {
       this.prevSkinStage = currentSkinStage
       this.switchSkinTexture(currentSkinStage)
+      sfx.play('stageUp')
+      this.juice.shake('medium')
     }
 
     // アクティブアイテムタイマー消化
@@ -385,10 +465,15 @@ export class GameScene extends Phaser.Scene {
       isBehindPace,
     )
     if (itemEffect) {
+      this.juice.collectPop(itemEffect.x, itemEffect.y, itemEffect.isDebuff)
       if (itemEffect.isDebuff) {
+        sfx.play('debuff')
+        this.juice.shake('small')
+        uiController.hudShake()
         this.applyDebuffEffect(itemEffect.type)
         uiController.showDebuffHit(itemEffect.label)
       } else {
+        sfx.play('pickup')
         this.applyItemEffect(itemEffect.type)
         uiController.showItemPickup(itemEffect.label)
       }
@@ -404,7 +489,7 @@ export class GameScene extends Phaser.Scene {
 
     // スターベーション判定
     if (this.hungerSystem.isStarved()) {
-      this.triggerGameOver()
+      this.triggerGameOver('starve')
       return
     }
 
@@ -443,12 +528,25 @@ export class GameScene extends Phaser.Scene {
     uiController.updateScoreGap(this.scoreSystem.getTotal(), this.bestScore)
     uiController.setAlertDangerGlow(this.alertSystem.getAmount() > 80)
 
+    // 危険ビネット — アラート60%以上で連続的に濃くなる
+    const alertPct = this.alertSystem.getPercent()
+    const vignette = alertPct >= JUICE.VIGNETTE_START
+      ? ((alertPct - JUICE.VIGNETTE_START) / (1 - JUICE.VIGNETTE_START)) * JUICE.VIGNETTE_MAX_OPACITY
+      : 0
+    uiController.setDangerVignette(vignette)
+
+    // BGM 緊張度 (Ph3+ でテンポアップ + キック)
+    sfx.setMusicTension(lvl >= 3 ? 1 : 0)
+
     // グリードボーナス表示 + 発動時カメラシェイク
     const bloodPct = this.bloodSystem.getPercent()
     const isGreedNow = bloodPct >= BALANCE.GREED_THRESHOLD_BASE
     if (isGreedNow !== this.greedActive) {
       this.greedActive = isGreedNow
-      if (isGreedNow) this.cameras.main.shake(200, 0.003)
+      if (isGreedNow) {
+        this.cameras.main.shake(200, 0.003)
+        sfx.play('greed')
+      }
     }
     const greedMult = bloodPct >= BALANCE.GREED_THRESHOLD_MAX ? BALANCE.GREED_MULT_MAX
                     : isGreedNow ? BALANCE.GREED_MULT_BASE : 0
@@ -467,6 +565,10 @@ export class GameScene extends Phaser.Scene {
         : null
       uiController.flashMilestoneReached(next)
       this.triggerMilestoneReward(reachedMilestone)
+      // 祝祭演出: 金パーティクル噴水 + フラッシュ + シェイク
+      const isFinal = reachedMilestone >= 20000
+      this.juice.milestoneFountain(isFinal)
+      sfx.play(isFinal ? 'fanfare' : 'milestone')
     }
 
     // Smoke active event status
@@ -486,6 +588,41 @@ export class GameScene extends Phaser.Scene {
   }
 
   // --------------------------------------------------
+
+  private handleOrientationPause(): boolean {
+    const blocked = document.body.classList.contains('mobile-gameplay-portrait')
+    if (blocked) {
+      if (!this.orientationPaused) {
+        this.orientationPaused = true
+        this.orientationPauseWasInitial = !this.hasPlayStarted || this.elapsedSec < 0.05
+        uiController.setGameplayCursorHidden(false)
+        sfx.onPause()
+        this.wasSucking = false
+        this.player.setSucking(false)
+        this.touchControls.hide()
+      }
+      return true
+    }
+
+    if (this.orientationPaused) {
+      this.orientationPaused = false
+      if (this.orientationPauseWasInitial) {
+        this.orientationPauseWasInitial = false
+        uiController.setGameplayCursorHidden(!this.tutorialManager.isActive())
+        if (this.tutorialManager.isActive()) {
+          this.touchControls.hide()
+        } else {
+          this.touchControls.show()
+        }
+        if (this.ph4Active) sfx.startHeartbeat()
+        return false
+      }
+      this.orientationPauseWasInitial = false
+      this.pauseGame()
+      return true
+    }
+    return false
+  }
 
   /**
    * チュートリアルオーバーレイを現在ステップに合わせて更新する (自動デモ版)
@@ -508,7 +645,7 @@ export class GameScene extends Phaser.Scene {
         this.demoMosquito.setVisible(false)
         uiController.removeTutorialHighlight()
         // DOM テキストをブリンク表示
-        uiController.showTutorialText('PRESS ENTER\nTO START', '[ ENTER / SPACE ]', true)
+        uiController.showTutorialText('PRESS ENTER\nTO START', '[ ENTER / SPACE / CLICK ]', true)
       }
       return
     }
@@ -725,10 +862,15 @@ export class GameScene extends Phaser.Scene {
       this.tweens.killTweensOf([this.ph4Overlay, this.ph4Warning])
       this.tweens.add({ targets: this.ph4Overlay, alpha: 0.18, duration: 300, yoyo: true, repeat: -1 })
       this.tweens.add({ targets: this.ph4Warning, alpha: 1,    duration: 250, yoyo: true, repeat: -1 })
+      // RAGE 突入: ハートビート + 軽いズームで緊張感を演出
+      sfx.startHeartbeat()
+      uiController.setPh4Zoom(true)
     } else {
       this.tweens.killTweensOf([this.ph4Overlay, this.ph4Warning])
       this.ph4Overlay.setAlpha(0)
       this.ph4Warning.setAlpha(0)
+      sfx.stopHeartbeat()
+      uiController.setPh4Zoom(false)
     }
   }
 
@@ -749,12 +891,34 @@ export class GameScene extends Phaser.Scene {
     const lastSecondMult = this.hungerSystem.getPercent() >= BALANCE.LAST_SECOND_THRESHOLD
       ? BALANCE.LAST_SECOND_MULT : 1.0
 
-    this.scoreSystem.deliver(bloodAmount, isFull, alertPercent, hungerBonus, stageMult, dailyMult, lastSecondMult)
+    const { gained } = this.scoreSystem.deliver(
+      bloodAmount, isFull, alertPercent, hungerBonus, stageMult, dailyMult, lastSecondMult,
+    )
     this.bloodSystem.reset()
     this.alertSystem.reduceOnDelivery(isFull)
     this.hungerSystem.feed(bloodAmount)
     // 赤ちゃんが喜ぶ — 納品直後に excited ポートレートを一定時間表示
     this.babyExcitedTimer = 1.5
+
+    // --- 納品ジュース: 獲得スコアに応じて演出を階層化 ---
+    const tier: DeliverTier =
+      gained >= JUICE.DELIVER_TIER_HUGE   ? 'huge'   :
+      gained >= JUICE.DELIVER_TIER_BIG    ? 'big'    :
+      gained >= JUICE.DELIVER_TIER_MEDIUM ? 'medium' : 'small'
+
+    this.juice.hitStop(JUICE.HITSTOP_DELIVER_MS[tier])
+    if (tier === 'medium')    this.juice.shake('small')
+    else if (tier === 'big')  this.juice.shake('medium')
+    else if (tier === 'huge') {
+      this.juice.shake('huge')
+      this.juice.flash(120, 255, 255, 220)
+    }
+    this.juice.deliveryBurst(this.dpPos.x, this.dpPos.y, tier, isFull)
+    sfx.playDeliver(tier)
+    sfx.playCombo(this.scoreSystem.getChain())
+    uiController.spawnFlyingScore(
+      this.dpPos.x, this.dpPos.y, `+${gained.toLocaleString('en-US')}`,
+    )
 
     // GREEDY RUN ミッション進行
     const missionResult = this.missionSystem.onDelivery(bloodAmount / BALANCE.MAX_BLOOD)
@@ -775,9 +939,12 @@ export class GameScene extends Phaser.Scene {
    * オーバーレイをフェードアウトし全ゲーム状態をリセットして本番ゲームを開始する。
    */
   private resetForGameStart(): void {
+    uiController.setGameplayCursorHidden(true)
+
     // ハンドラを外す (二重呼び出し防止)
     document.removeEventListener('keydown', this._tutEnterHandler, { capture: true })
     document.removeEventListener('keydown', this._tutSkipHandler,  { capture: true })
+    document.removeEventListener('pointerdown', this._tutClickHandler, { capture: true })
 
     // プレイカウントを +1 (2回目以降はチュートリアルがOFF デフォルト)
     this.incrementPlayCount()
@@ -787,6 +954,16 @@ export class GameScene extends Phaser.Scene {
 
     // 手攻撃を再開
     this.hand.enable()
+    this.touchControls.show()
+
+    // 演出状態をリセットして本番用 BGM を開始
+    this.juice.reset()
+    this.wasSucking = false
+    this.prevFull   = false
+    uiController.setDangerVignette(0)
+    uiController.setPh4Zoom(false)
+    sfx.startMusic('game')
+    sfx.setMusicTension(0)
 
     // オーバーレイをフェードアウト
     this.tweens.killTweensOf(this.tutSubText)
@@ -842,6 +1019,12 @@ export class GameScene extends Phaser.Scene {
   private pauseGame(): void {
     if (this.isGameOver || this.isPaused) return
     this.isPaused = true
+    uiController.setGameplayCursorHidden(false)
+    this.touchControls.hide()
+    // ループ音を止める (BGMは残す) — 再開時はエッジ検出で自動復帰
+    sfx.onPause()
+    this.wasSucking = false
+    this.player.setSucking(false)
     this.scene.pause()
     uiController.showPauseOverlay(
       () => this.resumeGame(),
@@ -853,7 +1036,15 @@ export class GameScene extends Phaser.Scene {
     if (!this.isPaused) return
     this.isPaused = false
     uiController.hidePauseOverlay()
+    uiController.setGameplayCursorHidden(!this.tutorialManager.isActive())
+    if (this.tutorialManager.isActive()) {
+      this.touchControls.hide()
+    } else {
+      this.touchControls.show()
+    }
     this.scene.resume()
+    // Ph4 継続中ならハートビートを再開
+    if (this.ph4Active) sfx.startHeartbeat()
     // DOM フォーカスを解除してキー入力を Phaser に戻す
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
     this.input.keyboard?.resetKeys()
@@ -861,11 +1052,24 @@ export class GameScene extends Phaser.Scene {
 
   private returnToTitle(): void {
     this.isPaused = false
+    uiController.setGameplayCursorHidden(false)
+    this.touchControls.destroy()
+    sfx.stopSuckLoop()
+    sfx.stopHeartbeat()
+    sfx.setMusicTension(0)
+    sfx.startMusic('title')
+    this.juice.reset()
+    uiController.clearNotices()
+    uiController.setDangerVignette(0)
+    uiController.setPh4Zoom(false)
     uiController.hidePauseOverlay()
     uiController.hidePauseButton()
     document.removeEventListener('keydown', this._escHandler,      { capture: true })
     document.removeEventListener('keydown', this._tutEnterHandler,  { capture: true })
     document.removeEventListener('keydown', this._tutSkipHandler,   { capture: true })
+    document.removeEventListener('pointerdown', this._tutClickHandler, { capture: true })
+    const rotateTitleBtn = document.getElementById('rotate-title-btn') as HTMLButtonElement | null
+    if (rotateTitleBtn) rotateTitleBtn.onclick = null
     this.leftPanel.hide()
     uiController.hideBabyUI()
     uiController.hideRightPanel()
@@ -885,42 +1089,63 @@ export class GameScene extends Phaser.Scene {
     this.scene.start(SCENE_KEYS.TITLE)
   }
 
-  private triggerGameOver(): void {
+  /**
+   * ゲームオーバー — 死因別の演出シーケンスを流してから ResultScene へ。
+   *   hit:    フリーズ → スローモ + ズーム + 蚊が赤く回転落下 → 赤ビネット
+   *   starve: 青灰フラッシュ + 力なく降下
+   * HUD は演出終了まで残す (唐突な消滅を防ぐ)。
+   */
+  private triggerGameOver(cause: DeathCause): void {
     if (this.isGameOver) return
     this.isGameOver = true
+    uiController.setGameplayCursorHidden(false)
+    this.touchControls.hide()
     document.removeEventListener('keydown', this._escHandler,      { capture: true })
     document.removeEventListener('keydown', this._tutEnterHandler,  { capture: true })
     document.removeEventListener('keydown', this._tutSkipHandler,   { capture: true })
+    document.removeEventListener('pointerdown', this._tutClickHandler, { capture: true })
+    const rotateTitleBtn = document.getElementById('rotate-title-btn') as HTMLButtonElement | null
+    if (rotateTitleBtn) rotateTitleBtn.onclick = null
     uiController.hidePauseButton()
-    uiController.hideGameHUD()
-    uiController.updateGreedBonus(0)
-    uiController.hideStarvationCountdown()
-    uiController.hideMilestone()
-    uiController.updateActiveEffects([])
-    uiController.setMissionBanner(null)
 
-    this.leftPanel.hide()
-    uiController.hideBabyUI()
-    uiController.hideRightPanel()
-    uiController.setAlertDangerGlow(false)
+    // ループ音・緊張演出を停止して死亡音へ
+    sfx.stopSuckLoop()
+    sfx.stopHeartbeat()
+    sfx.setMusicTension(0)
+    sfx.stopMusic()
+    sfx.play(cause === 'hit' ? 'death' : 'starveDeath')
+
+    this.player.setSucking(false)
+    uiController.clearNotices()
+    uiController.setDangerVignette(0)
+    uiController.setPh4Zoom(false)
+    uiController.hideTutorialText()
+    uiController.removeTutorialHighlight()
+    uiController.hideStarvationCountdown()
+
+    // 敵とターゲットは即座に停止 (インパクトで画面が静止する)
+    this.hand.disable()
     this.skinLayer.destroy()
-    this.smokeSystem.destroy()
-    this.itemSystem.destroy()
     this.respawnTimers.forEach(t => t.destroy())
 
     const breakdown = this.scoreSystem.getBreakdown()
-    const flash = this.add.rectangle(GAME_WIDTH/2, GAME_HEIGHT/2, GAME_WIDTH, GAME_HEIGHT, 0xff0000, 0.6).setDepth(95)
 
-    this.tweens.add({
-      targets: flash,
-      alpha: 0,
-      duration: 600,
-      ease: 'Power2',
-      onComplete: () => {
-        this.hand.destroy()
-        this.deliveryPoint.destroy()
-        this.scene.start(SCENE_KEYS.RESULT, { breakdown })
-      },
+    this.juice.deathSequence(cause, this.player.getSprite(), () => {
+      uiController.hideGameHUD()
+      uiController.updateGreedBonus(0)
+      uiController.hideMilestone()
+      uiController.updateActiveEffects([])
+      uiController.setMissionBanner(null)
+      this.leftPanel.hide()
+      uiController.hideBabyUI()
+      uiController.hideRightPanel()
+      uiController.setAlertDangerGlow(false)
+      this.smokeSystem.destroy()
+      this.itemSystem.destroy()
+      this.touchControls.destroy()
+      this.hand.destroy()
+      this.deliveryPoint.destroy()
+      this.scene.start(SCENE_KEYS.RESULT, { breakdown })
     })
   }
 
@@ -1005,9 +1230,7 @@ export class GameScene extends Phaser.Scene {
         this.itemSystem.spawnSpecific('hourglass')
         break
       case 20000:
-        // 祝福: カメラシェイク + アラートリセット + 空腹回復
-        this.cameras.main.shake(600, 0.005)
-        this.cameras.main.flash(500, 255, 215, 0, true)
+        // 祝福: アラートリセット + 空腹回復 (シェイク/フラッシュは milestoneFountain 側で発火)
         this.alertSystem.reduce(30)
         this.hungerSystem.reduceDirect(30)
         uiController.showItemPickup('🌟 MAX STAGE BONUS!')

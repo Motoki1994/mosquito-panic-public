@@ -60,7 +60,7 @@
           <span id="speed-indicator" class="speed--fast">100%</span>
         </div>
 
-        <button id="pause-btn" class="pause-btn hidden" title="Pause (ESC)">MENU</button>
+        <button id="pause-btn" class="pause-btn hidden" title="Pause / Menu (Esc)">ESC PAUSE</button>
       </div>
 
       <!-- ============================
@@ -121,8 +121,19 @@
             <div class="starvation-label">⚠ BABIES STARVING!</div>
             <div id="starvation-countdown" class="starvation-countdown">10</div>
           </div>
+          <div id="danger-vignette" class="danger-vignette"></div>
           <div id="combo-display" class="hidden"></div>
+          <div id="combo-timer-track" class="hidden combo-timer-track">
+            <div id="combo-timer-fill" class="combo-timer-fill"></div>
+          </div>
           <div id="delivery-score-popup" class="hidden delivery-popup"></div>
+
+          <div id="touch-controls" class="touch-controls hidden" aria-hidden="true">
+            <div id="touch-stick" class="touch-stick">
+              <div id="touch-stick-knob" class="touch-stick-knob"></div>
+            </div>
+            <button id="touch-pause-btn" class="touch-pause-btn" title="Pause">Ⅱ</button>
+          </div>
 
           <div id="active-effects" class="hidden active-effects"></div>
           <div id="mission-banner" class="hidden mission-banner">
@@ -130,20 +141,24 @@
             <div id="mb-desc" class="mb-desc"></div>
             <div id="mb-progress" class="mb-progress"></div>
           </div>
-          <div id="item-notice" class="hidden notice notice--item"></div>
-          <div id="mission-complete" class="hidden notice notice--mission-complete"></div>
           <div id="debuff-popup" class="hidden debuff-popup"></div>
-          <div id="event-notice" class="hidden notice notice--event"></div>
-          <div id="blood-full-notice" class="hidden notice notice--blood">
-            🩸 FULL TANK! — DELIVER NOW!
+
+          <!-- 通知スタック — 全フラッシュ通知をここで縦積み管理 (NotificationQueue) -->
+          <div id="notice-stack" class="notice-stack">
+            <div id="event-notice" class="hidden notice notice--event"></div>
+            <div id="blood-full-notice" class="hidden notice notice--blood">
+              🩸 FULL TANK! — DELIVER NOW!
+            </div>
+            <div id="hunger-notice" class="hidden notice notice--hunger">
+              🍼 BABIES HUNGRY — DELIVER NOW!
+            </div>
+            <div id="item-notice" class="hidden notice notice--item"></div>
+            <div id="mission-complete" class="hidden notice notice--mission-complete"></div>
+            <div id="heavy-notice" class="hidden notice notice--heavy">
+              ⚠️ GETTING HEAVY!
+            </div>
+            <div id="stage-notice" class="hidden notice notice--stage"></div>
           </div>
-          <div id="heavy-notice" class="hidden notice notice--heavy">
-            ⚠️ GETTING HEAVY!
-          </div>
-          <div id="hunger-notice" class="hidden notice notice--hunger">
-            🍼 BABIES HUNGRY — DELIVER NOW!
-          </div>
-          <div id="stage-notice" class="hidden notice notice--stage"></div>
 
           <!-- Tutorial Text Panel (DOM — visible above canvas & skin-layer) -->
           <div id="tut-text-panel" class="tut-text-panel hidden">
@@ -275,6 +290,15 @@
 
       </div><!-- /#game-row -->
     </div><!-- /#game-wrapper -->
+
+    <div id="rotate-device" class="rotate-device" aria-hidden="true">
+      <div class="rotate-panel">
+        <div class="rotate-icon">↻</div>
+        <div class="rotate-title">ROTATE</div>
+        <div class="rotate-copy">横向きに戻すとポーズメニューを開きます</div>
+        <button id="rotate-title-btn" class="btn-pause btn-pause--danger">⏏ RETURN TO TITLE</button>
+      </div>
+    </div>
 
     <script type="module" src="./src/main.ts"></script>
   </body>

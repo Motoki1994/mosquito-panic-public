@@ -10,6 +10,9 @@ export interface ItemEffect {
   type: ItemType
   label: string
   isDebuff: boolean
+  /** 収集時の座標 (取得ポップ演出用) */
+  x: number
+  y: number
 }
 
 // デバフタイプのセット
@@ -179,7 +182,7 @@ export class ItemSystem {
       const dist = Phaser.Math.Distance.Between(playerX, playerY, item.x, item.y)
       if (dist <= COLLECT_RADIUS) {
         const def = ITEM_DEFS[item.type]
-        collected = { type: item.type, label: def.label, isDebuff: item.isDebuff }
+        collected = { type: item.type, label: def.label, isDebuff: item.isDebuff, x: item.x, y: item.y }
         this.destroyItem(i)
         break
       }

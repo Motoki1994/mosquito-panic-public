@@ -1,6 +1,8 @@
 import Phaser from 'phaser'
 import { BALANCE } from '../data/balance'
+import { JUICE } from '../data/juice'
 import { AlertLevel } from '../systems/AlertSystem'
+import { sfx } from '../systems/SfxManager'
 
 /**
  * HumanHand の攻撃フェーズ
@@ -10,6 +12,8 @@ import { AlertLevel } from '../systems/AlertSystem'
  */
 type HandPhase = 'idle' | 'warning' | 'descend' | 'strike' | 'cooldown'
 type OnHitCallback = () => void
+/** ニアミス (ギリギリ回避) コールバック — 叩き落下地点の座標を渡す */
+type OnNearMissCallback = (x: number, y: number) => void
 
 /**
  * HumanHand (敵攻撃エンティティ)
@@ -36,6 +40,10 @@ export class HumanHand {
 
   private phaseTimer: Phaser.Time.TimerEvent | null = null
   private onHit: OnHitCallback
+  private onNearMiss: OnNearMissCallback | null
+
+  /** 今回の strike 中に被弾したか (ニアミス判定用) */
+  private struckThisSwing: boolean = false
 
   private elapsedMs: number = 0
   private alertLevel: AlertLevel = 1
@@ -46,9 +54,10 @@ export class HumanHand {
   private playerX: number = 400
   private playerY: number = 300
 
-  constructor(scene: Phaser.Scene, onHit: OnHitCallback) {
+  constructor(scene: Phaser.Scene, onHit: OnHitCallback, onNearMiss: OnNearMissCallback | null = null) {
     this.scene = scene
     this.onHit = onHit
+    this.onNearMiss = onNearMiss
 
     this.warnCircle = scene.add.arc(-200, -200, 60, 0, 360, false, 0xffcc00, 0)
     this.warnCircle.setStrokeStyle(2, 0xffcc00, 0)
@@ -141,6 +150,8 @@ export class HumanHand {
 
   private beginWarn(): void {
     this.phase = 'warning'
+    this.struckThisSwing = false
+    sfx.play(this.alertLevel >= 4 ? 'warnRage' : 'warn')
     const margin = 80
     const scatter = this.scatterRadius()
 
@@ -225,6 +236,7 @@ export class HumanHand {
 
   private beginStrike(): void {
     this.phase = 'strike'
+    sfx.play('slam')
 
     this.warnIcon.setAlpha(0).setScale(HumanHand.ICON_SCALE)
     this.strikeCircle.setAlpha(0.9)
@@ -252,6 +264,16 @@ export class HumanHand {
     this.phase = 'cooldown'
     this.warnCircle.setScale(1)
     this.strikeCircle.setScale(1)
+
+    // ニアミス判定: 被弾せずに済んだが判定圏 + マージン以内にいた
+    if (!this.struckThisSwing && this.onNearMiss) {
+      const dist = Phaser.Math.Distance.Between(
+        this.playerX, this.playerY, this.targetX, this.targetY,
+      )
+      if (dist <= this.hitRadius() + JUICE.NEAR_MISS_MARGIN) {
+        this.onNearMiss(this.targetX, this.targetY)
+      }
+    }
 
     this.phaseTimer = this.scene.time.addEvent({
       delay: this.calcNextInterval(),
@@ -286,6 +308,7 @@ export class HumanHand {
     )
     if (dist <= this.hitRadius()) {
       this.phase = 'cooldown'
+      this.struckThisSwing = true
       this.onHit()
     }
   }
