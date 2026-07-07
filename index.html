@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet" />
+    <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet" />
+    <title>Mosquito Panic</title>
+    <script type="module" crossorigin src="./assets/index-gKT8AWPe.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-CNmHfOwf.css">
+  </head>
+  <body>
+    <div id="game-wrapper">
+
+      <!-- ============================
+           Top Bar: Score + Gauges + SPD
+           ============================ -->
+      <div id="top-bar" class="hidden">
+        <div id="score-display">
+          <span class="tb-score-label">SCORE:</span>
+          <span id="score">0</span>
+          <span id="score-gap" class="score-gap hidden"></span>
+        </div>
+
+        <div id="top-gauges">
+          <!-- BLOOD pill -->
+          <div class="gauge-pill gauge-pill--blood">
+            <span class="gp-label">BLOOD</span>
+            <div class="gp-inner">
+              <div id="blood-gauge-track" class="gauge-track gauge-track--lg">
+                <div id="blood-gauge-fill" class="gauge-fill"></div>
+              </div>
+              <span id="blood-value" class="gp-value">0%</span>
+              <span id="blood-status" class="bstatus hidden"></span>
+            </div>
+          </div>
+
+          <!-- ALERT pill -->
+          <div class="gauge-pill gauge-pill--alert">
+            <span class="gp-label">ALERT</span>
+            <div class="gp-inner">
+              <div id="alert-gauge-track" class="gauge-track gauge-track--lg alert--lv1">
+                <div id="alert-gauge-fill" class="gauge-fill"></div>
+              </div>
+              <span id="alert-phase-label" class="alert-phase alert-phase--lv1">CALM</span>
+            </div>
+          </div>
+
+          <!-- HUNGER pill -->
+          <div class="gauge-pill gauge-pill--hunger">
+            <span class="gp-label">HUNGER</span>
+            <div class="gp-inner">
+              <div id="hud-hunger-gauge-track" class="gauge-track gauge-track--lg">
+                <div id="hud-hunger-fill" class="gauge-fill"></div>
+              </div>
+              <span id="hud-hunger-value" class="gp-value">0%</span>
+            </div>
+          </div>
+        </div>
+
+        <div id="top-spd">
+          <span class="tb-spd-label">SPD</span>
+          <span id="speed-indicator" class="speed--fast">100%</span>
+        </div>
+
+        <button id="pause-btn" class="pause-btn hidden" title="Pause / Menu (Esc)">ESC PAUSE</button>
+      </div>
+
+      <!-- ============================
+           Game Row: Left | Canvas | Right
+           ============================ -->
+      <div id="game-row">
+
+        <!-- Left Panel — contextual info only -->
+        <div id="left-panel" class="hidden">
+          <div id="lp-char-wrap">
+            <img id="lp-char-img" src="./assets/mosquito_ui_empty_normal-B1sYQLHx.png" alt="mosquito" />
+          </div>
+          <div class="lp-stats">
+            <div class="lp-stat-block">
+              <span class="lp-stat-key lp-key--area">AREA:</span>
+              <span id="lp-stage-label" class="lp-stat-val lp-stage-label lp-stage--leg">LEG</span>
+            </div>
+            <div class="lp-stat-block">
+              <span class="lp-stat-key lp-key--phase">PHASE:</span>
+              <span id="lp-alert-label" class="lp-stat-val lp-phase-label">CALM</span>
+            </div>
+            <div class="lp-stat-block">
+              <span class="lp-stat-key lp-key--time">TIME:</span>
+              <span id="lp-timer-value" class="lp-stat-val lp-timer-val">0:00</span>
+            </div>
+          </div>
+
+          <!-- Area Progress Icons -->
+          <div class="lp-area-icons">
+            <span class="lp-area-icons-label">AREA</span>
+            <div class="lp-area-icons-row">
+              <img id="lp-icon-leg"  class="lp-area-icon lp-area-icon--active" src="./assets/leg-CiLFkWqR.png"  alt="LEG"  title="LEG"  />
+              <img id="lp-icon-arm"  class="lp-area-icon"                      src="./assets/arm-CMzj6kJQ.png"  alt="ARM"  title="ARM"  />
+              <img id="lp-icon-face" class="lp-area-icon"                      src="./assets/face-BLw01GLO.png" alt="FACE" title="FACE" />
+            </div>
+          </div>
+
+          <!-- Baby Status Portrait -->
+          <div id="lp-baby-wrap" class="lp-baby-wrap hidden">
+            <span class="lp-baby-label">BABIES</span>
+            <div class="lp-baby-frame">
+              <img id="lp-baby-img" src="./assets/baby_normal-Dqv1iNl3.png" alt="baby status" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Game Area — 800×600 canvas + all overlays -->
+        <div id="game-area">
+          <div id="game-container"></div>
+
+          <div id="alert-glow" class="alert-glow"></div>
+          <div id="milestone-display" class="hidden milestone-display"></div>
+          <div id="greed-notice" class="hidden greed-notice">
+            <span>⚡ GREED BONUS</span>
+            <span id="greed-mult-text">×1.5</span>
+          </div>
+          <div id="starvation-overlay" class="hidden starvation-overlay">
+            <div class="starvation-label">⚠ BABIES STARVING!</div>
+            <div id="starvation-countdown" class="starvation-countdown">10</div>
+          </div>
+          <div id="danger-vignette" class="danger-vignette"></div>
+          <div id="combo-display" class="hidden"></div>
+          <div id="combo-timer-track" class="hidden combo-timer-track">
+            <div id="combo-timer-fill" class="combo-timer-fill"></div>
+          </div>
+          <div id="delivery-score-popup" class="hidden delivery-popup"></div>
+
+          <div id="touch-controls" class="touch-controls hidden" aria-hidden="true">
+            <div id="touch-stick" class="touch-stick">
+              <div id="touch-stick-knob" class="touch-stick-knob"></div>
+            </div>
+            <button id="touch-pause-btn" class="touch-pause-btn" title="Pause">Ⅱ</button>
+          </div>
+
+          <div id="active-effects" class="hidden active-effects"></div>
+          <div id="mission-banner" class="hidden mission-banner">
+            <div class="mb-header">📋 MISSION</div>
+            <div id="mb-desc" class="mb-desc"></div>
+            <div id="mb-progress" class="mb-progress"></div>
+          </div>
+          <div id="debuff-popup" class="hidden debuff-popup"></div>
+
+          <!-- 通知スタック — 全フラッシュ通知をここで縦積み管理 (NotificationQueue) -->
+          <div id="notice-stack" class="notice-stack">
+            <div id="event-notice" class="hidden notice notice--event"></div>
+            <div id="blood-full-notice" class="hidden notice notice--blood">
+              🩸 FULL TANK! — DELIVER NOW!
+            </div>
+            <div id="hunger-notice" class="hidden notice notice--hunger">
+              🍼 BABIES HUNGRY — DELIVER NOW!
+            </div>
+            <div id="item-notice" class="hidden notice notice--item"></div>
+            <div id="mission-complete" class="hidden notice notice--mission-complete"></div>
+            <div id="heavy-notice" class="hidden notice notice--heavy">
+              ⚠️ GETTING HEAVY!
+            </div>
+            <div id="stage-notice" class="hidden notice notice--stage"></div>
+          </div>
+
+          <!-- Tutorial Text Panel (DOM — visible above canvas & skin-layer) -->
+          <div id="tut-text-panel" class="tut-text-panel hidden">
+            <p id="tut-main" class="tut-main"></p>
+            <p id="tut-sub"  class="tut-sub"></p>
+          </div>
+
+          <!-- Pause Overlay -->
+          <div id="pause-overlay" class="hidden pause-overlay">
+            <div class="pause-panel">
+              <p class="pause-title">PAUSED</p>
+              <button id="pause-resume-btn" class="btn-pause">▶ RESUME</button>
+              <button id="pause-title-btn" class="btn-pause btn-pause--danger">⏏ RETURN TO TITLE</button>
+              <div class="pause-vol-section">
+                <div class="pause-vol-row">
+                  <label class="pause-vol-label" for="music-volume">MUSIC</label>
+                  <input type="range" id="music-volume" class="pause-slider" min="0" max="100" value="80" />
+                  <span class="pause-vol-val" id="music-vol-val">80</span>
+                </div>
+                <div class="pause-vol-row">
+                  <label class="pause-vol-label" for="sfx-volume">SFX</label>
+                  <input type="range" id="sfx-volume" class="pause-slider" min="0" max="100" value="80" />
+                  <span class="pause-vol-val" id="sfx-vol-val">80</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Title Screen -->
+          <div id="title-screen">
+            <div class="title-mosquito">🦟</div>
+            <h1 class="title-main">MOSQUITO PANIC</h1>
+            <p class="title-sub">▸ SUCK • DELIVER • SURVIVE ◂</p>
+
+            <div class="title-how">
+              <div class="how-item">
+                <span class="how-key">WASD / ↑↓←→</span>
+                <span class="how-desc">Move</span>
+              </div>
+              <div class="how-item">
+                <span class="how-key">⊕ targets</span>
+                <span class="how-desc">Suck blood</span>
+              </div>
+              <div class="how-item">
+                <span class="how-key">🍼 deliver</span>
+                <span class="how-desc">Score!</span>
+              </div>
+              <div class="how-item">
+                <span class="how-key">⚠️ warning</span>
+                <span class="how-desc">Dodge the hand!</span>
+              </div>
+            </div>
+
+            <p class="title-desc">
+              Full tank delivery = big bonus.<br />
+              High alert = danger AND reward.
+            </p>
+
+            <div id="title-daily-bonus" class="title-daily-bonus hidden">
+              <span class="tdb-label">TODAY'S BONUS</span>
+              <span id="tdb-condition"></span>
+              <span class="tdb-mult">×1.8</span>
+            </div>
+
+            <div id="title-highscore" class="title-highscore hidden"></div>
+
+            <label id="tutorial-toggle-row" class="title-tutorial-row">
+              <input type="checkbox" id="tutorial-toggle" checked />
+              <span class="tutorial-toggle-label">Tutorial</span>
+            </label>
+
+            <button id="start-btn" class="btn-primary">GAME START</button>
+          </div>
+
+          <!-- Result Screen -->
+          <div id="result-screen" class="hidden">
+            <div id="new-record-badge" class="new-record hidden">★ NEW RECORD ★</div>
+            <p class="result-title">GAME OVER</p>
+
+            <div class="result-breakdown">
+              <div class="breakdown-row">
+                <span class="breakdown-label">🍼 DELIVERY SCORE</span>
+                <span class="breakdown-value" id="result-delivery-score">0</span>
+              </div>
+              <div class="breakdown-row">
+                <span class="breakdown-label">📦 DELIVERIES</span>
+                <span class="breakdown-value" id="result-delivery-count">0回</span>
+              </div>
+              <div class="breakdown-row breakdown-row--survival">
+                <span class="breakdown-label">SURVIVED</span>
+                <span class="breakdown-value" id="result-survival-sec">0s</span>
+              </div>
+            </div>
+
+            <div class="result-divider"></div>
+            <p class="result-label">TOTAL SCORE</p>
+            <p class="result-score-value"><span id="final-score">0</span></p>
+            <p class="result-highscore" id="result-highscore">BEST: 0</p>
+            <p id="near-miss" class="near-miss hidden"></p>
+            <div class="result-btns">
+              <button id="retry-btn" class="btn-primary">RETRY</button>
+              <button id="back-title-btn" class="btn-secondary">TITLE</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Panel — events + daily bonus -->
+        <div id="right-panel" class="hidden">
+          <div class="rp-title">EVENTS</div>
+          <div class="rp-events">
+            <div id="ae-fan" class="ae-item ae-item--fan hidden">💨 FAN <span id="ae-fan-dir">←</span></div>
+            <div id="ae-smoke" class="ae-item ae-item--smoke hidden">🌀 SMOKE</div>
+            <div id="ae-none" class="ae-none">—</div>
+          </div>
+
+          <div class="rp-divider"></div>
+
+          <div class="rp-bonus-section">
+            <div class="rp-bonus-header">TODAY'S BONUS</div>
+            <div id="rp-db-name" class="rp-db-name">—</div>
+            <div id="rp-db-condition" class="rp-db-condition">—</div>
+            <div id="rp-db-mult" class="rp-db-mult">×1.8</div>
+            <div class="rp-db-bar-track">
+              <div id="rp-db-bar-fill" class="rp-db-bar-fill"></div>
+            </div>
+            <div id="rp-db-ready" class="rp-db-ready hidden">★ READY!</div>
+          </div>
+        </div>
+
+      </div><!-- /#game-row -->
+    </div><!-- /#game-wrapper -->
+
+    <div id="rotate-device" class="rotate-device" aria-hidden="true">
+      <div class="rotate-panel">
+        <div class="rotate-icon">↻</div>
+        <div class="rotate-title">ROTATE</div>
+        <div class="rotate-copy">横向きに戻すとポーズメニューを開きます</div>
+        <button id="rotate-title-btn" class="btn-pause btn-pause--danger">⏏ RETURN TO TITLE</button>
+      </div>
+    </div>
+
+  </body>
+</html>
