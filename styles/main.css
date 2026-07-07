@@ -128,28 +128,29 @@ body.mobile-gameplay-landscape #game-area {
 
 body.mobile-gameplay-landscape #top-bar {
   width: 800px;
+  height: 44px;
   padding: 0 8px;
   gap: 6px;
 }
 
 body.mobile-gameplay-landscape #left-panel,
 body.mobile-gameplay-landscape #right-panel {
-  width: 150px;
-  padding: 14px 10px;
-  gap: 12px;
+  width: 126px;
+  padding: 10px 8px;
+  gap: 8px;
 }
 
 body.mobile-gameplay-landscape #score-display {
-  min-width: 128px;
-  padding: 3px 7px;
+  min-width: 110px;
+  padding: 2px 6px;
 }
 
 body.mobile-gameplay-landscape .tb-score-label {
-  font-size: 12px;
+  font-size: 10px;
 }
 
 body.mobile-gameplay-landscape #score {
-  font-size: 14px;
+  font-size: 12px;
 }
 
 body.mobile-gameplay-landscape #top-gauges {
@@ -157,18 +158,106 @@ body.mobile-gameplay-landscape #top-gauges {
 }
 
 body.mobile-gameplay-landscape .gauge-pill {
-  min-width: 104px;
-  max-width: 160px;
-  padding: 4px 8px 5px;
+  min-width: 92px;
+  max-width: 140px;
+  padding: 3px 7px 4px;
 }
 
 body.mobile-gameplay-landscape #top-spd {
-  min-width: 70px;
+  min-width: 60px;
 }
 
 body.mobile-gameplay-landscape .pause-btn {
-  padding: 5px 7px;
+  padding: 4px 6px;
+  font-size: 6px;
+  margin-left: 2px;
+}
+
+body.mobile-gameplay-landscape #left-panel {
+  align-items: stretch;
+}
+
+body.mobile-gameplay-landscape #lp-char-wrap {
+  width: 82px;
+  height: 82px;
+  margin: 0 auto;
+}
+
+body.mobile-gameplay-landscape #lp-char-img {
+  width: 74px;
+  height: 74px;
+}
+
+body.mobile-gameplay-landscape .lp-stats {
+  gap: 8px;
+}
+
+body.mobile-gameplay-landscape .lp-stat-key {
+  font-size: 6px;
+}
+
+body.mobile-gameplay-landscape .lp-stat-val {
+  font-size: 10px;
+}
+
+body.mobile-gameplay-landscape .lp-area-icons {
+  gap: 4px;
+}
+
+body.mobile-gameplay-landscape .lp-area-icons-label,
+body.mobile-gameplay-landscape .lp-baby-label {
+  font-size: 6px;
+}
+
+body.mobile-gameplay-landscape .lp-area-icons-row {
+  gap: 4px;
+}
+
+body.mobile-gameplay-landscape .lp-area-icon {
+  width: 24px;
+  height: 24px;
+}
+
+body.mobile-gameplay-landscape .lp-baby-frame {
+  width: 76px;
+  height: 76px;
+  margin: 0 auto;
+}
+
+body.mobile-gameplay-landscape #lp-baby-img {
+  width: 52px;
+  height: 52px;
+}
+
+body.mobile-gameplay-landscape #right-panel {
+  gap: 8px;
+}
+
+body.mobile-gameplay-landscape .rp-title {
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+
+body.mobile-gameplay-landscape .ae-item {
+  font-size: 8px;
+}
+
+body.mobile-gameplay-landscape .rp-bonus-header,
+body.mobile-gameplay-landscape .ae-none {
+  font-size: 5px;
+}
+
+body.mobile-gameplay-landscape .rp-db-name {
   font-size: 7px;
+}
+
+body.mobile-gameplay-landscape .rp-db-condition {
+  font-size: 8px;
+  line-height: 1.2;
+}
+
+body.mobile-gameplay-landscape .rp-db-mult {
+  font-size: 9px;
 }
 
 body.mobile-portrait-shell #game-container {
@@ -811,7 +900,8 @@ font-family: var(--font-pixel);
 }
 
 @media (hover: none), (pointer: coarse), (max-height: 600px) and (orientation: landscape) {
-  .touch-controls:not(.hidden) {
+  body.mobile-gameplay-landscape .touch-controls:not(.hidden),
+  body.mobile-gameplay-portrait .touch-controls:not(.hidden) {
     display: block;
   }
 }
@@ -846,8 +936,8 @@ font-family: var(--font-pixel);
 }
 
 body.mobile-gameplay-landscape .touch-stick {
-  left: calc(-46px + var(--touch-stick-offset-x, 0px));
-  bottom: calc(-36px + var(--touch-stick-offset-y, 0px));
+  left: calc(-46px + max(0px, env(safe-area-inset-left) - 10px) + var(--touch-stick-offset-x, 0px));
+  bottom: calc(-36px + max(0px, env(safe-area-inset-bottom) - 6px) + var(--touch-stick-offset-y, 0px));
   width: 180px;
   height: 180px;
   border-width: 3px;
@@ -863,12 +953,12 @@ body.mobile-gameplay-landscape .touch-stick-knob {
 }
 
 body.mobile-gameplay-landscape .touch-pause-btn {
-  right: -26px;
-  bottom: -18px;
+  right: calc(-22px + max(0px, env(safe-area-inset-right) - 10px));
+  bottom: calc(-18px + max(0px, env(safe-area-inset-bottom) - 6px));
   width: 72px;
   height: 72px;
   font-size: 20px;
-  --touch-menu-shift-x: 0px;
+  --touch-menu-shift-x: -12px;
 }
 
 /* ===========================
