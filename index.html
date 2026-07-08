@@ -6,8 +6,8 @@
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet" />
     <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet" />
     <title>Mosquito Panic</title>
-    <script type="module" crossorigin src="./assets/index-CT6rw3vC.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-BQ7XlUj1.css">
+    <script type="module" crossorigin src="./assets/index-BSwt_4jP.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-CHlY5XQl.css">
   </head>
   <body>
     <div id="game-wrapper">
@@ -221,9 +221,7 @@
           <!-- Title Screen -->
           <div id="title-screen">
             <div class="title-hero">
-              <div class="title-mosquito">
-                <img src="./assets/mosquito_ui_empty_normal-B1sYQLHx.png" alt="" />
-              </div>
+              <div class="title-mosquito" aria-hidden="true">🦟</div>
               <h1 class="title-main">MOSQUITO PANIC</h1>
               <p class="title-sub">吸って、届けて、逃げ切れ。</p>
             </div>
@@ -358,6 +356,13 @@
         <div class="rotate-copy">横向きに戻すとポーズメニューを開きます</div>
         <button id="rotate-title-btn" class="btn-pause btn-pause--danger">⌂ RETURN TO TITLE</button>
       </div>
+    </div>
+
+    <!-- レトロCRT: ノイズ + フリッカー (全画面) -->
+    <div id="retro-fx" class="retro-fx" aria-hidden="true">
+      <div class="retro-fx__noise"></div>
+      <div class="retro-fx__scan"></div>
+      <div class="retro-fx__flicker"></div>
     </div>
 
   </body>
