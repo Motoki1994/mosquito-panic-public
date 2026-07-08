@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet" />
     <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet" />
-    <title>Mosquito Panic</title>
-    <script type="module" crossorigin src="./assets/index-CMuZQSPI.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-GbZ3Kou8.css">
+    <title>Mosquito Panic</title>
+    <script type="module" crossorigin src="./assets/index-Dl5a3tos.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-YN2Jdt73.css">
   </head>
   <body>
     <div id="game-wrapper">
@@ -17,15 +17,15 @@
            ============================ -->
       <div id="top-bar" class="hidden">
         <div id="score-display">
-          <span class="tb-score-label">SCORE:</span>
+          <span class="tb-score-label">SCORE</span>
           <span id="score">0</span>
           <span id="score-gap" class="score-gap hidden"></span>
         </div>
 
         <div id="top-gauges">
-          <!-- BLOOD pill -->
+          <!-- BLOOD gauge -->
           <div class="gauge-pill gauge-pill--blood">
-            <span class="gp-label">BLOOD</span>
+            <span class="gp-label"><span class="gp-l-full">BLOOD</span><span class="gp-l-short">BLD</span></span>
             <div class="gp-inner">
               <div id="blood-gauge-track" class="gauge-track gauge-track--lg">
                 <div id="blood-gauge-fill" class="gauge-fill"></div>
@@ -35,9 +35,9 @@
             </div>
           </div>
 
-          <!-- ALERT pill -->
+          <!-- ALERT gauge -->
           <div class="gauge-pill gauge-pill--alert">
-            <span class="gp-label">ALERT</span>
+            <span class="gp-label"><span class="gp-l-full">ALERT</span><span class="gp-l-short">ALT</span></span>
             <div class="gp-inner">
               <div id="alert-gauge-track" class="gauge-track gauge-track--lg alert--lv1">
                 <div id="alert-gauge-fill" class="gauge-fill"></div>
@@ -46,9 +46,9 @@
             </div>
           </div>
 
-          <!-- HUNGER pill -->
+          <!-- HUNGER gauge -->
           <div class="gauge-pill gauge-pill--hunger">
-            <span class="gp-label">HUNGER</span>
+            <span class="gp-label"><span class="gp-l-full">HUNGER</span><span class="gp-l-short">HGR</span></span>
             <div class="gp-inner">
               <div id="hud-hunger-gauge-track" class="gauge-track gauge-track--lg">
                 <div id="hud-hunger-fill" class="gauge-fill"></div>
@@ -63,7 +63,23 @@
           <span id="speed-indicator" class="speed--fast">100%</span>
         </div>
 
-        <button id="pause-btn" class="pause-btn hidden" title="Pause / Menu (Esc)">ESC PAUSE</button>
+        <button id="pause-btn" class="pause-btn hidden" title="Pause / Menu (Esc)">⏸<span class="pause-btn-label"> MENU</span></button>
+
+        <!-- モバイル横持ち専用: アバター + AREA|PHASE (PC では非表示) -->
+        <div id="tb-status" class="tb-status">
+          <div class="tb-avatar"><img id="tb-char-img" src="./assets/mosquito_ui_empty_normal-B1sYQLHx.png" alt="" /></div>
+          <div class="tb-cells">
+            <div class="tb-cell">
+              <span class="tb-cell-key">AREA</span>
+              <span id="tb-stage-label" class="tb-stage-label lp-stage--leg">LEG</span>
+            </div>
+            <div class="tb-cell-div"></div>
+            <div class="tb-cell">
+              <span class="tb-cell-key">PHASE</span>
+              <span id="tb-phase-label" class="tb-phase-label lp-phase--lv1">CALM</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- ============================
@@ -73,20 +89,22 @@
 
         <!-- Left Panel — contextual info only -->
         <div id="left-panel" class="hidden">
-          <div id="lp-char-wrap">
-            <img id="lp-char-img" src="./assets/mosquito_ui_empty_normal-B1sYQLHx.png" alt="mosquito" />
-          </div>
-          <div class="lp-stats">
-            <div class="lp-stat-block">
-              <span class="lp-stat-key lp-key--area">AREA:</span>
-              <span id="lp-stage-label" class="lp-stat-val lp-stage-label lp-stage--leg">LEG</span>
+          <div class="lp-char-card">
+            <div id="lp-char-wrap">
+              <img id="lp-char-img" src="./assets/mosquito_ui_empty_normal-B1sYQLHx.png" alt="mosquito" />
             </div>
-            <div class="lp-stat-block">
-              <span class="lp-stat-key lp-key--phase">PHASE:</span>
-              <span id="lp-alert-label" class="lp-stat-val lp-phase-label">CALM</span>
+            <div class="lp-cells">
+              <div class="lp-cell">
+                <span class="lp-cell-key">AREA</span>
+                <span id="lp-stage-label" class="lp-stat-val lp-stage-label lp-stage--leg">LEG</span>
+              </div>
+              <div class="lp-cell">
+                <span class="lp-cell-key">PHASE</span>
+                <span id="lp-alert-label" class="lp-stat-val lp-phase-label lp-phase--lv1">CALM</span>
+              </div>
             </div>
-            <div class="lp-stat-block">
-              <span class="lp-stat-key lp-key--time">TIME:</span>
+            <div class="lp-cell lp-cell--wide">
+              <span class="lp-cell-key">TIME</span>
               <span id="lp-timer-value" class="lp-stat-val lp-timer-val">0:00</span>
             </div>
           </div>
@@ -101,11 +119,16 @@
             </div>
           </div>
 
-          <!-- Baby Status Portrait -->
+          <!-- Baby Status Card (portrait + tank gauge) -->
           <div id="lp-baby-wrap" class="lp-baby-wrap hidden">
-            <span class="lp-baby-label">BABIES</span>
+            <span class="lp-baby-label">BABIES <span class="lp-baby-count">×1</span></span>
             <div class="lp-baby-frame">
               <img id="lp-baby-img" src="./assets/baby_normal-Dqv1iNl3.png" alt="baby status" />
+            </div>
+            <div class="lp-tank">
+              <span class="lp-tank-icon">🍼</span>
+              <div class="lp-tank-track"><div id="lp-tank-fill" class="lp-tank-fill"></div></div>
+              <span id="lp-tank-value" class="lp-tank-value">0%</span>
             </div>
           </div>
         </div>
@@ -116,6 +139,10 @@
 
           <div id="alert-glow" class="alert-glow"></div>
           <div id="milestone-display" class="hidden milestone-display"></div>
+          <div id="field-time" class="field-time">
+            <span class="field-time-label">TIME</span>
+            <span id="field-time-value">0:00</span>
+          </div>
           <div id="greed-notice" class="hidden greed-notice">
             <span>⚡ GREED BONUS</span>
             <span id="greed-mult-text">×1.5</span>
@@ -166,82 +193,78 @@
           <div id="pause-overlay" class="hidden pause-overlay">
             <div class="pause-panel">
               <p class="pause-title">PAUSED</p>
-              <button id="pause-resume-btn" class="btn-pause">▶ RESUME</button>
-              <button id="pause-title-btn" class="btn-pause btn-pause--danger">⏏ RETURN TO TITLE</button>
-              <div class="pause-vol-section">
+              <p id="pause-stats" class="pause-stats">SCORE 0 · TIME 0:00</p>
+              <button id="pause-resume-btn" class="btn-pause btn-pause--primary">▶ RESUME<span class="pause-key-hint">ESC</span></button>
+              <div class="pause-settings">
                 <div class="pause-vol-row">
-                  <label class="pause-vol-label" for="music-volume">MUSIC</label>
+                  <label class="pause-vol-label" for="music-volume">♪ MUSIC</label>
                   <input type="range" id="music-volume" class="pause-slider" min="0" max="100" value="80" />
                   <span class="pause-vol-val" id="music-vol-val">80</span>
                 </div>
                 <div class="pause-vol-row">
-                  <label class="pause-vol-label" for="sfx-volume">SFX</label>
+                  <label class="pause-vol-label" for="sfx-volume">◆ SFX</label>
                   <input type="range" id="sfx-volume" class="pause-slider" min="0" max="100" value="80" />
                   <span class="pause-vol-val" id="sfx-vol-val">80</span>
                 </div>
-              </div>
-              <div class="pause-stick-section">
-                <div class="pause-stick-title">STICK POSITION</div>
-                <div class="pause-vol-row">
-                  <label class="pause-vol-label" for="touch-stick-offset-x">X</label>
-                  <input type="range" id="touch-stick-offset-x" class="pause-slider" min="-220" max="220" step="1" value="0" />
-                  <span class="pause-vol-val" id="touch-stick-offset-x-val">0</span>
+                <div id="pause-haptics-row" class="pause-haptics-row">
+                  <span class="pause-haptics-label">振動（ハプティクス）</span>
+                  <button id="haptics-toggle" class="haptics-toggle" role="switch" aria-checked="true" aria-label="振動">
+                    <span class="haptics-knob"></span>
+                  </button>
                 </div>
-                <div class="pause-vol-row">
-                  <label class="pause-vol-label" for="touch-stick-offset-y">Y</label>
-                  <input type="range" id="touch-stick-offset-y" class="pause-slider" min="-220" max="220" step="1" value="0" />
-                  <span class="pause-vol-val" id="touch-stick-offset-y-val">0</span>
-                </div>
-                <button id="touch-stick-reset-btn" class="btn-pause">RESET STICK</button>
               </div>
+              <button id="pause-title-btn" class="btn-pause btn-pause--danger">⌂ RETURN TO TITLE</button>
+              <p class="pause-note">※スコアは保存されません（長押しで確定）</p>
             </div>
           </div>
 
           <!-- Title Screen -->
           <div id="title-screen">
-            <div class="title-mosquito">🦟</div>
-            <h1 class="title-main">MOSQUITO PANIC</h1>
-            <p class="title-sub">▸ SUCK • DELIVER • SURVIVE ◂</p>
-
-            <div class="title-how">
-              <div class="how-item">
-                <span class="how-key">WASD / ↑↓←→</span>
-                <span class="how-desc">Move</span>
+            <div class="title-hero">
+              <div class="title-mosquito">
+                <img src="./assets/mosquito_ui_empty_normal-B1sYQLHx.png" alt="" />
               </div>
-              <div class="how-item">
-                <span class="how-key">⊕ targets</span>
-                <span class="how-desc">Suck blood</span>
-              </div>
-              <div class="how-item">
-                <span class="how-key">🍼 deliver</span>
-                <span class="how-desc">Score!</span>
-              </div>
-              <div class="how-item">
-                <span class="how-key">⚠️ warning</span>
-                <span class="how-desc">Dodge the hand!</span>
-              </div>
+              <h1 class="title-main">MOSQUITO PANIC</h1>
+              <p class="title-sub">吸って、届けて、逃げ切れ。</p>
             </div>
 
-            <p class="title-desc">
-              Full tank delivery = big bonus.<br />
-              High alert = danger AND reward.<br />
-              スマホはブラウザのツールバー非表示を推奨します。
-            </p>
+            <div class="title-how">
+              <div class="how-card">
+                <div class="how-key how-key--move"><span class="pc-only">WASD / ↑↓←→</span><span class="sp-only">👆 タップで移動</span></div>
+                <div class="how-desc"><span class="pc-only">移動</span><span class="sp-only">タップで移動</span></div>
+              </div>
+              <div class="how-card">
+                <div class="how-key how-key--target">◎ TARGET</div>
+                <div class="how-desc"><span class="pc-only">血を吸う</span><span class="sp-only">的の上で自動吸血</span></div>
+              </div>
+              <div class="how-card">
+                <div class="how-key how-key--deliver">🩹 DELIVER</div>
+                <div class="how-desc">届けてスコア</div>
+              </div>
+              <div class="how-card">
+                <div class="how-key how-key--hand">⚠ HAND</div>
+                <div class="how-desc"><span class="pc-only">手から逃げろ！</span><span class="sp-only">手から回避</span></div>
+              </div>
+            </div>
 
             <div id="title-daily-bonus" class="title-daily-bonus hidden">
               <span class="tdb-label">TODAY'S BONUS</span>
               <span id="tdb-condition"></span>
-              <span class="tdb-mult">×1.8</span>
+              <span id="tdb-mult" class="tdb-mult">×1.8</span>
             </div>
 
-            <div id="title-highscore" class="title-highscore hidden"></div>
+            <div class="title-cta">
+              <button id="start-btn" class="btn-primary">GAME START</button>
+              <div class="title-meta">
+                <div id="title-highscore" class="title-highscore hidden"></div>
+                <label id="tutorial-toggle-row" class="title-tutorial-row">
+                  <input type="checkbox" id="tutorial-toggle" checked />
+                  <span class="tutorial-toggle-label">チュートリアル</span>
+                </label>
+              </div>
+            </div>
 
-            <label id="tutorial-toggle-row" class="title-tutorial-row">
-              <input type="checkbox" id="tutorial-toggle" checked />
-              <span class="tutorial-toggle-label">Tutorial</span>
-            </label>
-
-            <button id="start-btn" class="btn-primary">GAME START</button>
+            <div class="title-version">v0.1.2 · ♪ ↺</div>
           </div>
 
           <!-- Result Screen -->
@@ -251,15 +274,15 @@
 
             <div class="result-breakdown">
               <div class="breakdown-row">
-                <span class="breakdown-label">🍼 DELIVERY SCORE</span>
+                <span class="breakdown-label"><span class="bd-icon">🍼</span>DELIVERY SCORE</span>
                 <span class="breakdown-value" id="result-delivery-score">0</span>
               </div>
               <div class="breakdown-row">
-                <span class="breakdown-label">📦 DELIVERIES</span>
+                <span class="breakdown-label"><span class="bd-icon">📦</span>DELIVERIES</span>
                 <span class="breakdown-value" id="result-delivery-count">0回</span>
               </div>
               <div class="breakdown-row breakdown-row--survival">
-                <span class="breakdown-label">SURVIVED</span>
+                <span class="breakdown-label"><span class="bd-icon">⏱</span>SURVIVED</span>
                 <span class="breakdown-value" id="result-survival-sec">0s</span>
               </div>
             </div>
@@ -267,11 +290,11 @@
             <div class="result-divider"></div>
             <p class="result-label">TOTAL SCORE</p>
             <p class="result-score-value"><span id="final-score">0</span></p>
-            <p class="result-highscore" id="result-highscore">BEST: 0</p>
+            <p class="result-highscore" id="result-highscore">BEST 0</p>
             <p id="near-miss" class="near-miss hidden"></p>
             <div class="result-btns">
-              <button id="retry-btn" class="btn-primary">RETRY</button>
-              <button id="back-title-btn" class="btn-secondary">TITLE</button>
+              <button id="retry-btn" class="btn-primary">↻ RETRY</button>
+              <button id="back-title-btn" class="btn-secondary">⌂ TITLE</button>
             </div>
           </div>
         </div>
@@ -297,16 +320,35 @@
             </div>
             <div id="rp-db-ready" class="rp-db-ready hidden">★ READY!</div>
           </div>
+
+          <div class="rp-hint">ESC PAUSE</div>
         </div>
 
       </div><!-- /#game-row -->
     </div><!-- /#game-wrapper -->
 
+    <!-- モバイル操作系 — 左下 BABIES チップ / 右下 TARGET + DELIVER ガイドボタン -->
     <div id="touch-controls" class="touch-controls hidden" aria-hidden="true">
-      <div id="touch-stick" class="touch-stick">
-        <div id="touch-stick-knob" class="touch-stick-knob"></div>
+      <div id="tc-babies" class="tc-babies">
+        <span class="tc-babies-label">BABIES ×1</span>
+        <div class="tc-baby-frame">
+          <img id="tc-baby-img" src="./assets/baby_normal-Dqv1iNl3.png" alt="" />
+        </div>
+        <div class="tc-tank">
+          <span class="tc-tank-icon">🍼</span>
+          <div class="tc-tank-track"><div id="tc-tank-fill" class="tc-tank-fill"></div></div>
+        </div>
       </div>
-      <button id="touch-pause-btn" class="touch-pause-btn" title="Pause">Ⅱ</button>
+      <div class="tc-actions">
+        <button id="tc-target-btn" class="tc-btn tc-btn--target" aria-label="TARGET ガイド">
+          <span class="tc-reticle"></span>
+          <span class="tc-btn-label">TARGET</span>
+        </button>
+        <button id="tc-deliver-btn" class="tc-btn tc-btn--deliver" aria-label="DELIVER ガイド">
+          <span class="tc-btn-icon">🍼</span>
+          <span class="tc-btn-label">DELIVER</span>
+        </button>
+      </div>
     </div>
 
     <div id="rotate-device" class="rotate-device" aria-hidden="true">
@@ -314,9 +356,9 @@
         <div class="rotate-icon">↻</div>
         <div class="rotate-title">ROTATE</div>
         <div class="rotate-copy">横向きに戻すとポーズメニューを開きます</div>
-        <button id="rotate-title-btn" class="btn-pause btn-pause--danger">⏏ RETURN TO TITLE</button>
+        <button id="rotate-title-btn" class="btn-pause btn-pause--danger">⌂ RETURN TO TITLE</button>
       </div>
     </div>
-
+
   </body>
 </html>
